@@ -1,60 +1,77 @@
-# bot/social_media/twitter.py
-import logging
 import requests
-import base64
-import json
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+import logging
+from requests_oauthlib import OAuth1
+from config_manager import ConfigManager
 
 class TwitterIntegration:
-    def __init__(self, api_key, api_secret_key):
-        self.api_key = api_key
-        self.api_secret_key = api_secret_key
-        self.base_url = "https://api.twitter.com/1.1"
+    BASE_URL = "https://api.twitter.com/1.1"
+
+    def __init__(self, config_manager):
+        """
+        Initialize the TwitterIntegration using the configuration manager to retrieve the API credentials.
+        
+        :param config_manager: An instance of ConfigManager to retrieve configuration settings.
+        """
+        self.api_key = config_manager.get("twitter", "api_key")
+        self.api_secret_key = config_manager.get("twitter", "api_secret_key")
+        self.access_token = config_manager.get("twitter", "access_token")
+        self.access_token_secret = config_manager.get("twitter", "access_token_secret")
+        
+        self.session = self._create_session()
         self.logger = logging.getLogger(__name__)
+        self.logger.info("TwitterIntegration initialized with provided credentials.")
 
-    def authenticate(self):
-        auth_url = "https://api.twitter.com/oauth2/token"
-        key_secret = f"{self.api_key}:{self.api_secret_key}".encode("ascii")
-        b64_encoded_key = base64.b64encode(key_secret).decode("ascii")
-        headers = {"Authorization": f"Basic {b64_encoded_key}", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"}
-        data = {"grant_type": "client_credentials"}
+    def _create_session(self):
+        """
+        Create and return a session with OAuth1 authentication for Twitter API.
+        
+        :return: A requests.Session object configured with OAuth1 authentication.
+        """
+        auth = OAuth1(self.api_key, self.api_secret_key, self.access_token, self.access_token_secret)
+        session = requests.Session()
+        session.auth = auth
+        return session
 
-        response = requests.post(auth_url, headers=headers, data=data)
-        if response.status_code == 200:
-            token = response.json().get("access_token")
-            self.logger.info("Twitter authentication successful.")
-            return token
-        else:
-            self.logger.error(f"Failed to authenticate with Twitter: {response.text}")
+    def get_tweets(self, hashtag):
+        """
+        Retrieve tweets associated with a specific hashtag.
+        
+        :param hashtag: The hashtag to search for tweets.
+        :return: A list of tweets associated with the hashtag.
+        """
+        url = f"{self.BASE_URL}/search/tweets.json"
+        params = {'q': f'#{hashtag}', 'count': 100}
+        self.logger.info(f"Fetching tweets for hashtag: {hashtag}")
+        try:
+            response = self.session.get(url, params=params)
+            response.raise_for_status()
+            tweets = response.json().get('statuses', [])
+            self.logger.info(f"Retrieved {len(tweets)} tweets for hashtag: {hashtag}")
+            return tweets
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error fetching tweets for hashtag {hashtag}: {e}")
+            return []
+        except Exception as e:
+            self.logger.error(f"Unexpected error during tweet retrieval: {e}")
+            return []
+
+    def post_tweet(self, tweet_text):
+        """
+        Post a tweet to the authenticated user's timeline.
+        
+        :param tweet_text: The text of the tweet to post.
+        :return: The result of the tweet post operation.
+        """
+        url = f"{self.BASE_URL}/statuses/update.json"
+        self.logger.info(f"Posting tweet: {tweet_text[:50]}...")  # Log the start of tweet posting
+        try:
+            response = self.session.post(url, data={'status': tweet_text})
+            response.raise_for_status()
+            self.logger.info(f"Successfully posted tweet: {tweet_text[:50]}...")
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error posting tweet: {e}")
             return None
-
-    def post_tweet(self, message):
-        token = self.get_cached_token()
-        if not token:
-            token = self.authenticate()
-            self.cache_token(token)
-        
-        headers = {"Authorization": f"Bearer {token}"}
-        payload = {"status": message}
-        response = requests.post(f"{self.base_url}/statuses/update.json", headers=headers, data=payload)
-        
-        if response.status_code == 200:
-            logger.info("Tweet posted successfully.")
-        else:
-            logger.error(f"Failed to post tweet: {response.text}")
-
-    # Implement the placeholder methods with logging
-    def get_cached_token(self):
-        # Retrieve token from cache with logging
-        pass
-
-    def cache_token(self, token):
-        # Cache the new token with logging
-        pass
-
-    def authenticate(self):
-        # Authenticate with Twitter API and return token with logging
-        pass
+        except Exception as e:
+            self.logger.error(f"Unexpected error during tweet posting: {e}")
+            return None
