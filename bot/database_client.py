@@ -13,29 +13,19 @@ class DatabaseClient:
         return cls._instance
 
     def __init__(self, config_manager: ConfigManager):
-        """
-        Initialize the DatabaseClient with Supabase configuration.
-        """
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
-        self.config_manager = config_manager
-        self.supabase_url = self.config_manager.get("supabase", "url")
-        self.supabase_key = self.config_manager.get("supabase", "key")
+        self.supabase_url = config_manager.get("supabase_url")
+        self.supabase_key = config_manager.get("supabase_key")
         self.client = supabase.create_client(self.supabase_url, self.supabase_key)
         self._initialized = True
 
     def get_user_preferences(self, user_id):
-        """
-        Retrieve user preferences from Supabase.
-
-        :param user_id: The ID of the user whose preferences are to be retrieved.
-        :return: A dictionary of user preferences if found, otherwise None.
-        """
         try:
             response = self.client.from_("user_preferences").select("*").eq("user_id", user_id).execute()
             if response.status_code == 200 and response.data:
-                return response.data[0]  # Assuming the first result contains the preferences
+                return response.data[0]
             self.logger.info(f"No preferences found for user {user_id}")
             return None
         except Exception as e:
@@ -43,12 +33,6 @@ class DatabaseClient:
             return None
 
     def update_user_preferences(self, user_id, preferences):
-        """
-        Update user preferences in Supabase.
-
-        :param user_id: The ID of the user whose preferences are to be updated.
-        :param preferences: A dictionary of preferences to update.
-        """
         try:
             response = self.client.from_("user_preferences").upsert({"user_id": user_id, **preferences}).execute()
             if response.status_code == 200:
