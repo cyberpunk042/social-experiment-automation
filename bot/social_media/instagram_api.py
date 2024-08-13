@@ -1,6 +1,6 @@
 import requests
 import logging
-from config_manager import ConfigManager
+from bot.config_manager import ConfigManager
 
 class InstagramIntegration:
     BASE_URL = "https://api.instagram.com/v1"
@@ -8,10 +8,10 @@ class InstagramIntegration:
     def __init__(self, config_manager):
         """
         Initialize the InstagramIntegration using the configuration manager to retrieve the API key.
-        
+
         :param config_manager: An instance of ConfigManager to retrieve configuration settings.
         """
-        self.api_key = config_manager.get("instagram", "api_key")
+        self.api_key = config_manager.get("instagram_api_key")
         self.session = requests.Session()
         self.session.headers.update({'Authorization': f'Bearer {self.api_key}'})
         self.logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class InstagramIntegration:
     def get_posts(self, hashtag):
         """
         Retrieve posts associated with a specific hashtag.
-        
+
         :param hashtag: The hashtag to search for posts.
         :return: A list of posts associated with the hashtag.
         """
@@ -36,13 +36,13 @@ class InstagramIntegration:
             self.logger.error(f"Error fetching posts for hashtag {hashtag}: {e}")
             return []
         except Exception as e:
-            self.logger.error(f"Unexpected error during post retrieval: {e}")
+            self.logger.error(f"Unexpected error during post retrieval for hashtag {hashtag}: {e}")
             return []
 
     def post_response(self, post_id, response_text):
         """
         Post a response to a specific Instagram post.
-        
+
         :param post_id: The ID of the post to respond to.
         :param response_text: The text of the response to post.
         :return: The result of the post operation.
@@ -58,5 +58,5 @@ class InstagramIntegration:
             self.logger.error(f"Error posting response to post ID {post_id}: {e}")
             return None
         except Exception as e:
-            self.logger.error(f"Unexpected error during response posting: {e}")
+            self.logger.error(f"Unexpected error during response posting for post ID {post_id}: {e}")
             return None

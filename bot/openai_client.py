@@ -28,6 +28,7 @@ class OpenAIClient:
         :param retries: The number of times to retry the request in case of a transient error.
         :param timeout: Timeout in seconds for the API call.
         :return: The generated text completion.
+        :raises Exception: If the completion fails after all retries.
         """
         # Parameter validation
         if not 1 <= max_tokens <= 2048:
@@ -65,6 +66,7 @@ class OpenAIClient:
                 raise
 
         # If all retries fail, raise an exception
+        self.logger.error("Failed to generate completion after multiple attempts.")
         raise Exception("Failed to generate completion after multiple attempts.")
 
 # Example usage of the OpenAIClient with parameter validation and error handling

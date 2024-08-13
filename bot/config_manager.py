@@ -3,7 +3,6 @@ import logging
 import threading
 from dotenv import load_dotenv
 
-# Updated ConfigManager with thread-safe Singleton and enhanced logging
 class ConfigManager:
     _instance = None
     _lock = threading.Lock()  # Lock for thread safety
@@ -16,6 +15,14 @@ class ConfigManager:
         return cls._instance
 
     def __init__(self, env_file_path=".env"):
+        """
+        Initialize the ConfigManager class.
+
+        This constructor loads environment variables from the specified .env file
+        and initializes the configuration dictionary.
+
+        :param env_file_path: Path to the .env file containing environment variables.
+        """
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
@@ -27,10 +34,13 @@ class ConfigManager:
         self._initialized = True
 
     def _load_config(self):
-        """Load configuration settings from environment variables.
-        This method can be extended to load from other sources if needed."""
+        """
+        Load configuration settings from environment variables.
+
+        This method loads and validates environment variables, storing them in the config dictionary.
+        Additional sources can be added if needed.
+        """
         try:
-            # Load and validate environment variables
             self.config.update({
                 'openai_api_key': self._validate_env_var('OPENAI_API_KEY'),
                 'supabase_url': self._validate_env_var('SUPABASE_URL'),
@@ -41,25 +51,40 @@ class ConfigManager:
                 'twitter_access_token': os.getenv('TWITTER_ACCESS_TOKEN'),
                 'twitter_access_token_secret': os.getenv('TWITTER_ACCESS_TOKEN_SECRET'),
             })
-
             self.logger.info("Configuration loaded successfully.")
         except Exception as e:
-            self.logger.error(f"Error loading configuration: {e}")
+            self.logger.exception(f"Error loading configuration: {e}")
             raise
 
     def _validate_env_var(self, var_name):
+        """
+        Validate that a required environment variable is set.
+
+        :param var_name: The name of the environment variable to validate.
+        :return: The value of the environment variable if valid.
+        :raises ValueError: If the environment variable is missing or empty.
+        """
         value = os.getenv(var_name)
         if not value:
+            self.logger.error(f"Environment variable {var_name} is missing or empty.")
             raise ValueError(f"Environment variable {var_name} is missing or empty.")
         return value
 
     def get(self, key, default=None):
-        return self.config.get(key, default)
+        """
+        Retrieve a configuration value.
 
+        :param key: The key of the configuration setting.
+        :param default: The default value to return if the key is not found.
+        :return: The configuration value.
+        """
+        return self.config.get(key, default)
 
     def reload(self):
         """
         Reload the configuration settings.
+
+        This method reloads the environment variables and updates the configuration dictionary.
         Useful if environment variables or external sources change during runtime.
         """
         self._load_config()
@@ -68,7 +93,7 @@ class ConfigManager:
     def set(self, key, value):
         """
         Set or update a configuration value.
-        
+
         :param key: The key of the configuration setting.
         :param value: The value to set.
         """

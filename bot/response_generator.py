@@ -22,9 +22,10 @@ class ResponseGenerator:
         :return: The generated response as a string, or an error message if generation fails.
         """
         try:
-            return self.openai_client.complete(prompt)
+            self.logger.info(f"Generating response for prompt: {prompt}")
+            return await self.openai_client.complete(prompt)
         except Exception as e:
-            self.logger.error(f"Failed to generate response for prompt '{prompt}': {e}")
+            self.logger.exception(f"Failed to generate response for prompt '{prompt}': {e}")
             return "Sorry, I couldn't generate a response."
 
     async def generate_personalized_reply(self, comment):
@@ -39,11 +40,12 @@ class ResponseGenerator:
             response_style = user_pref.get("response_style", "neutral")
             interaction_type = user_pref.get("interaction_type", "neutral")
 
-            prompt = f"Reply to {comment['text']} in a {response_style} style."
+            prompt = f"Reply to '{comment['text']}' in a {response_style} style for a {interaction_type} interaction."
+            self.logger.info(f"Generating personalized reply for comment: {comment['text']} with style: {response_style}")
             return await self.generate_response(prompt)
         except Exception as e:
-            self.logger.error(f"Failed to generate personalized reply: {e}")
-            return "Sorry, couldn't generate a reply."
+            self.logger.exception(f"Failed to generate personalized reply for comment '{comment['text']}': {e}")
+            return "Sorry, I couldn't generate a reply."
 
     async def select_random_comment(self, comments):
         """
@@ -53,5 +55,8 @@ class ResponseGenerator:
         :return: A randomly selected comment, or None if the list is empty.
         """
         if comments:
-            return random.choice(comments)
+            selected_comment = random.choice(comments)
+            self.logger.info(f"Selected random comment: {selected_comment['text']}")
+            return selected_comment
+        self.logger.info("No comments available to select.")
         return None

@@ -3,7 +3,6 @@ import supabase
 import threading
 from bot.config_manager import ConfigManager
 
-# Updated DatabaseClient with thread-safe Singleton and enhanced logging
 class DatabaseClient:
     _instance = None
     _lock = threading.Lock()
@@ -16,6 +15,13 @@ class DatabaseClient:
         return cls._instance
 
     def __init__(self, config_manager: ConfigManager):
+        """
+        Initialize the DatabaseClient class.
+
+        This constructor initializes the Supabase client using configuration settings.
+
+        :param config_manager: An instance of ConfigManager to retrieve Supabase settings.
+        """
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
@@ -32,6 +38,12 @@ class DatabaseClient:
         self._initialized = True
 
     def get_user_preferences(self, user_id):
+        """
+        Retrieve user preferences from the database based on user_id.
+
+        :param user_id: The ID of the user whose preferences are being retrieved.
+        :return: A dictionary of user preferences or None if not found or an error occurs.
+        """
         try:
             response = self.client.from_("user_preferences").select("*").eq("user_id", user_id).execute()
             if response.status_code == 200 and response.data:
@@ -45,6 +57,12 @@ class DatabaseClient:
             return None
 
     def update_user_preferences(self, user_id, preferences):
+        """
+        Update user preferences in the database.
+
+        :param user_id: The ID of the user whose preferences are being updated.
+        :param preferences: A dictionary of preferences to be updated.
+        """
         try:
             response = self.client.from_("user_preferences").upsert({"user_id": user_id, **preferences}).execute()
             if response.status_code == 200:
@@ -69,6 +87,7 @@ class DatabaseClient:
                     query = query.eq(column, value)
             response = query.execute()
             if response.status_code == 200:
+                self.logger.info(f"Data retrieved from {table_name} with filters {filters}")
                 return response.data
             self.logger.error(f"Failed to retrieve data from {table_name}: {response.error_message}")
             return None

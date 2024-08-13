@@ -1,7 +1,7 @@
 import requests
 import logging
 from requests_oauthlib import OAuth1
-from config_manager import ConfigManager
+from bot.config_manager import ConfigManager
 
 class TwitterIntegration:
     BASE_URL = "https://api.twitter.com/1.1"
@@ -9,13 +9,13 @@ class TwitterIntegration:
     def __init__(self, config_manager):
         """
         Initialize the TwitterIntegration using the configuration manager to retrieve the API credentials.
-        
+
         :param config_manager: An instance of ConfigManager to retrieve configuration settings.
         """
-        self.api_key = config_manager.get("twitter", "api_key")
-        self.api_secret_key = config_manager.get("twitter", "api_secret_key")
-        self.access_token = config_manager.get("twitter", "access_token")
-        self.access_token_secret = config_manager.get("twitter", "access_token_secret")
+        self.api_key = config_manager.get("twitter_api_key")
+        self.api_secret_key = config_manager.get("twitter_api_secret_key")
+        self.access_token = config_manager.get("twitter_access_token")
+        self.access_token_secret = config_manager.get("twitter_access_token_secret")
         
         self.session = self._create_session()
         self.logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class TwitterIntegration:
     def _create_session(self):
         """
         Create and return a session with OAuth1 authentication for Twitter API.
-        
+
         :return: A requests.Session object configured with OAuth1 authentication.
         """
         auth = OAuth1(self.api_key, self.api_secret_key, self.access_token, self.access_token_secret)
@@ -35,7 +35,7 @@ class TwitterIntegration:
     def get_tweets(self, hashtag):
         """
         Retrieve tweets associated with a specific hashtag.
-        
+
         :param hashtag: The hashtag to search for tweets.
         :return: A list of tweets associated with the hashtag.
         """
@@ -52,13 +52,13 @@ class TwitterIntegration:
             self.logger.error(f"Error fetching tweets for hashtag {hashtag}: {e}")
             return []
         except Exception as e:
-            self.logger.error(f"Unexpected error during tweet retrieval: {e}")
+            self.logger.error(f"Unexpected error during tweet retrieval for hashtag {hashtag}: {e}")
             return []
 
     def post_tweet(self, tweet_text):
         """
         Post a tweet to the authenticated user's timeline.
-        
+
         :param tweet_text: The text of the tweet to post.
         :return: The result of the tweet post operation.
         """

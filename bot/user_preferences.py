@@ -11,6 +11,14 @@ class UserPreferences:
         return cls._instance
 
     def __init__(self, config_manager: ConfigManager):
+        """
+        Initialize the UserPreferences class.
+
+        This constructor initializes the configuration manager and database client
+        required for managing user preferences.
+
+        :param config_manager: An instance of ConfigManager for retrieving default settings.
+        """
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
@@ -20,6 +28,11 @@ class UserPreferences:
         self._initialized = True
 
     def load_preferences(self, user_id):
+        """
+        Load preferences for a given user from the database or default settings.
+
+        :param user_id: The ID of the user whose preferences are being loaded.
+        """
         try:
             preferences = self.db_client.get_user_preferences(user_id)
             if preferences:
@@ -33,11 +46,23 @@ class UserPreferences:
             self.preferences[user_id] = self._default_preferences()
 
     def get_preferences(self, user_id):
+        """
+        Retrieve preferences for a user, loading them if not already in memory.
+
+        :param user_id: The ID of the user whose preferences are being retrieved.
+        :return: A dictionary of user preferences.
+        """
         if user_id not in self.preferences:
             self.load_preferences(user_id)
         return self.preferences.get(user_id, self._default_preferences())
 
     def update_preferences(self, user_id, new_preferences):
+        """
+        Update the user's preferences in the database and in memory.
+
+        :param user_id: The ID of the user whose preferences are being updated.
+        :param new_preferences: A dictionary of new preferences to be updated.
+        """
         try:
             validated_preferences = self._validate_preferences(new_preferences)
             self.db_client.update_user_preferences(user_id, validated_preferences)
@@ -46,32 +71,13 @@ class UserPreferences:
         except Exception as e:
             self.logger.error(f"Failed to update preferences for user {user_id}: {e}")
 
-    def invalidate_cache(self, user_id=None):
-        """
-        Invalidate the in-memory cache for a specific user or all users.
-        """
-        if user_id:
-            if user_id in self.preferences:
-                del self.preferences[user_id]
-                self.logger.info(f"Cache invalidated for user {user_id}.")
-            else:
-                self.logger.info(f"No cache entry found for user {user_id} to invalidate.")
-        else:
-            self.preferences.clear()
-            self.logger.info("Cache invalidated for all users.")
-
-    def refresh_preferences(self, user_id):
-        """
-        Refresh the preferences for a specific user by reloading them from the database.
-        """
-        self.invalidate_cache(user_id)
-        self.load_preferences(user_id)
-        self.logger.info(f"Preferences refreshed for user {user_id}.")
-
     def _default_preferences(self):
-        # Load defaults that are meaningful in the context of the project
-        default_prefs = {
-            "preferred_engagement_level": self.config_manager.get("default_engagement_level", "medium"),
+        """
+        Return the default preferences from ConfigManager.
+
+        :return: A dictionary of default preferences.
+        """
+        return {
             "notifications_enabled": self.config_manager.get("default_notifications_enabled", True),
             "response_style": self.config_manager.get("default_response_style", "friendly"),
             "content_tone": self.config_manager.get("default_content_tone", "neutral"),
@@ -79,20 +85,15 @@ class UserPreferences:
             "notification_method": self.config_manager.get("default_notification_method", "email"),
             "interaction_type": self.config_manager.get("default_interaction_type", "reactive"),
         }
-        self.logger.info(f"Default preferences applied: {default_prefs}")
-        return default_prefs
 
     def _validate_preferences(self, preferences):
         """
-        Validate preferences to ensure they adhere to expected formats and values.
-        """
-        valid_engagement_levels = ["low", "medium", "high"]
-        if preferences.get("preferred_engagement_level") not in valid_engagement_levels:
-            self.logger.warning(f"Invalid engagement level: {preferences.get('preferred_engagement_level')}, setting to default.")
-            preferences["preferred_engagement_level"] = self.config_manager.get("default_engagement_level", "medium")
+        Validate and sanitize user preferences to ensure they conform to expected values.
 
-        if not isinstance(preferences.get("notifications_enabled"), bool):
-            self.logger.warning(f"Invalid notifications setting: {preferences.get('notifications_enabled')}, setting to default.")
+        :param preferences: A dictionary of preferences to validate.
+        :return: A sanitized dictionary of preferences.
+        """
+        if "notifications_enabled" not in preferences:
             preferences["notifications_enabled"] = self.config_manager.get("default_notifications_enabled", True)
 
         valid_response_styles = ["friendly", "formal", "casual"]
@@ -121,4 +122,3 @@ class UserPreferences:
             preferences["interaction_type"] = self.config_manager.get("default_interaction_type", "reactive")
 
         return preferences
-
