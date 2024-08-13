@@ -1,11 +1,12 @@
-
-from openai_client import OpenAIClient
+import logging
+from bot.openai_client import OpenAIClient
 import random
 
 class ResponseGenerator:
     def __init__(self, openai_client: OpenAIClient, user_preferences):
         self.openai_client = openai_client
         self.user_preferences = user_preferences
+        self.logger = logging.getLogger(__name__)
 
     def generate_response(self, prompt):
         return self.openai_client.complete(prompt)
@@ -13,7 +14,9 @@ class ResponseGenerator:
     def generate_personalized_reply(self, comment):
         try:
             user_pref = self.user_preferences.get_preferences(comment['user_id'])
-            prompt = f"Based on the user's preferences: {user_pref}, reply to the comment: {comment['text']}"
+            response_style = user_pref.get("response_style")
+            interaction_type = user_pref.get("interaction_type")
+            prompt = f"Based on the user's preferences: {response_style} style and {interaction_type} interaction, reply to the comment: {comment['text']}"
             return self.generate_response(prompt)
         except Exception as e:
             self.logger.error(f"Failed to generate personalized reply: {e}")

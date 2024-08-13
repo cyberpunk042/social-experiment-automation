@@ -1,4 +1,3 @@
-
 import logging
 from bot.openai_client import OpenAIClient
 from bot.user_preferences import UserPreferences
@@ -26,8 +25,11 @@ class Bot:
             return
         try:
             self.logger.info(f"Generating post for {platform}")
-            self.user_preferences.refresh_preferences(platform)  # Refresh preferences before generating content
-            generated_content = self.openai_client.complete(post_content)
+            user_prefs = self.user_preferences.get_preferences(platform)  # Fetch preferences
+            content_tone = user_prefs.get("content_tone")
+            content_frequency = user_prefs.get("content_frequency")
+            # Use content_tone and content_frequency in content generation logic
+            generated_content = self.openai_client.complete(f"{post_content} in a {content_tone} tone")
             self.platforms[platform].create_post(generated_content)
             self.logger.info(f"Post successfully created on {platform}")
         except Exception as e:
@@ -46,6 +48,9 @@ class Bot:
             self.user_preferences.refresh_preferences(platform)  # Refresh preferences before generating a reply
             comment_to_reply = self.response_generator.select_random_comment(comments)
             if comment_to_reply:
+                user_prefs = self.user_preferences.get_preferences(platform)
+                interaction_type = user_prefs.get("interaction_type")
+                # Use interaction_type in reply logic
                 reply = self.response_generator.generate_personalized_reply(comment_to_reply)
                 self.platforms[platform].reply_to_comment(comment_to_reply['id'], reply)
                 self.logger.info(f"Reply successfully posted on {platform}")

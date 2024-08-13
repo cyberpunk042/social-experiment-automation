@@ -74,7 +74,10 @@ class UserPreferences:
             "preferred_engagement_level": self.config_manager.get("default_engagement_level", "medium"),
             "notifications_enabled": self.config_manager.get("default_notifications_enabled", True),
             "response_style": self.config_manager.get("default_response_style", "friendly"),
-            # Add any other project-specific default settings here
+            "content_tone": self.config_manager.get("default_content_tone", "neutral"),
+            "content_frequency": self.config_manager.get("default_content_frequency", "daily"),
+            "notification_method": self.config_manager.get("default_notification_method", "email"),
+            "interaction_type": self.config_manager.get("default_interaction_type", "reactive"),
         }
         self.logger.info(f"Default preferences applied: {default_prefs}")
         return default_prefs
@@ -96,5 +99,25 @@ class UserPreferences:
         if preferences.get("response_style") not in valid_response_styles:
             self.logger.warning(f"Invalid response style: {preferences.get('response_style')}, setting to default.")
             preferences["response_style"] = self.config_manager.get("default_response_style", "friendly")
+
+        valid_content_tones = ["neutral", "positive", "negative"]
+        if preferences.get("content_tone") not in valid_content_tones:
+            self.logger.warning(f"Invalid content tone: {preferences.get('content_tone')}, setting to default.")
+            preferences["content_tone"] = self.config_manager.get("default_content_tone", "neutral")
+
+        valid_content_frequencies = ["daily", "weekly", "monthly"]
+        if preferences.get("content_frequency") not in valid_content_frequencies:
+            self.logger.warning(f"Invalid content frequency: {preferences.get('content_frequency')}, setting to default.")
+            preferences["content_frequency"] = self.config_manager.get("default_content_frequency", "daily")
+
+        valid_notification_methods = ["email", "sms", "none"]
+        if preferences.get("notification_method") not in valid_notification_methods:
+            self.logger.warning(f"Invalid notification method: {preferences.get('notification_method')}, setting to default.")
+            preferences["notification_method"] = self.config_manager.get("default_notification_method", "email")
+
+        valid_interaction_types = ["proactive", "reactive", "neutral"]
+        if preferences.get("interaction_type") not in valid_interaction_types:
+            self.logger.warning(f"Invalid interaction type: {preferences.get('interaction_type')}, setting to default.")
+            preferences["interaction_type"] = self.config_manager.get("default_interaction_type", "reactive")
 
         return preferences
