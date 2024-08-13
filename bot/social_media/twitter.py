@@ -1,6 +1,8 @@
 # bot/social_media/twitter.py
 import logging
 import requests
+import base64
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -11,6 +13,23 @@ class TwitterIntegration:
         self.api_key = api_key
         self.api_secret_key = api_secret_key
         self.base_url = "https://api.twitter.com/1.1"
+        self.logger = logging.getLogger(__name__)
+
+    def authenticate(self):
+        auth_url = "https://api.twitter.com/oauth2/token"
+        key_secret = f"{self.api_key}:{self.api_secret_key}".encode("ascii")
+        b64_encoded_key = base64.b64encode(key_secret).decode("ascii")
+        headers = {"Authorization": f"Basic {b64_encoded_key}", "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"}
+        data = {"grant_type": "client_credentials"}
+
+        response = requests.post(auth_url, headers=headers, data=data)
+        if response.status_code == 200:
+            token = response.json().get("access_token")
+            self.logger.info("Twitter authentication successful.")
+            return token
+        else:
+            self.logger.error(f"Failed to authenticate with Twitter: {response.text}")
+            return None
 
     def post_tweet(self, message):
         token = self.get_cached_token()
