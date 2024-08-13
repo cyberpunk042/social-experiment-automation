@@ -9,158 +9,154 @@ from bot.config_manager import ConfigManager
 from bot.response_generator import ResponseGenerator
 
 class Bot:
-    def __init__(self):
+    def __init__(self, interactive=False):
         """
         Initialize the Bot class, setting up integrations and services.
 
-        This constructor initializes the configuration manager, OpenAI client, user preferences,
-        response generator, and platform-specific integrations for Instagram and Twitter.
+        This constructor sets up the necessary integrations and services required
+        for the bot to function, including the option for interactive mode.
         """
-        self.logger = logging.getLogger(__name__)
-        self.config_manager = ConfigManager()
-        self.openai_client = OpenAIClient(self.config_manager)
-        self.user_preferences = UserPreferences(self.config_manager)
-        self.response_generator = ResponseGenerator(self.openai_client, self.user_preferences)
-        self.platforms = {
-            'instagram': InstagramIntegration(self.config_manager),
-            'twitter': TwitterIntegration(self.config_manager)
-        }
+        self.config = ConfigManager().load_config()
+        self.openai_client = OpenAIClient(self.config["openai_api_key"])
+        self.user_preferences = UserPreferences()
+        self.instagram = InstagramIntegration(self.config["instagram"])
+        self.twitter = TwitterIntegration(self.config["twitter"])
+        self.response_generator = ResponseGenerator(self.openai_client)
+        self.interactive = interactive  # Set the interactive mode
 
-    async def _generate_content_with_retries(self, post_content, content_tone, max_retries=3):
-        """
-        Generate content with retries in case of failure.
+    def confirm_action(self, action_description):
+        if not self.interactive:
+            return True
+        confirmation = input(f"Do you want to proceed with the following action: {action_description}? (yes/no): ")
+        return confirmation.lower() in ['yes', 'y']
 
-        :param post_content: The initial content or prompt for generating the post.
-        :param content_tone: The tone of the content to be generated.
-        :param max_retries: Maximum number of retries in case of failure.
-        :return: The generated content.
+    async def create_post(self, platform):
         """
-        attempt = 0
-        while attempt < max_retries:
+        Create a new post on the specified social media platform.
+
+        Args:
+            platform (str): The social media platform to post on.
+        """
+        if platform == 'twitter':
+            if self.confirm_action("creating a post on Twitter"):
+                await self.twitter.create_post("This is a test post.")
+        elif platform == 'instagram':
+            if self.confirm_action("creating a post on Instagram"):
+                await self.instagram.create_post("This is a test post.")
+
+    async def reply_to_comments(self, platform):
+        """
+        Reply to comments on the specified social media platform.
+
+        Args:
+            platform (str): The social media platform to reply on.
+        """
+        if platform == 'twitter':
+            if self.confirm_action("replying to comments on Twitter"):
+                await self.twitter.reply_to_comments()
+        elif platform == 'instagram':
+            if self.confirm_action("replying to comments on Instagram"):
+                await self.instagram.reply_to_comments()
+
+    async def like_posts(self, platform):
+        """
+        Like posts on the specified social media platform.
+
+        Args:
+            platform (str): The social media platform where posts will be liked.
+        """
+        if platform == 'twitter':
+            if self.confirm_action("liking posts on Twitter"):
+                await self.twitter.like_posts()
+        elif platform == 'instagram':
+            if self.confirm_action("liking posts on Instagram"):
+                await self.instagram.like_posts()
+
+    async def follow_users(self, platform):
+        """
+        Follow users on the specified social media platform.
+
+        Args:
+            platform (str): The social media platform where users will be followed.
+        """
+        if platform == 'twitter':
+            if self.confirm_action("following users on Twitter"):
+                await self.twitter.follow_users()
+        elif platform == 'instagram':
+            if self.confirm_action("following users on Instagram"):
+                await self.instagram.follow_users()
+
+    async def unfollow_users(self, platform):
+        """
+        Unfollow users on the specified social media platform.
+
+        Args:
+            platform (str): The social media platform where users will be unfollowed.
+        """
+        if platform == 'twitter':
+            if self.confirm_action("unfollowing users on Twitter"):
+                await self.twitter.unfollow_users()
+        elif platform == 'instagram':
+            if self.confirm_action("unfollowing users on Instagram"):
+                await self.instagram.unfollow_users()
+
+    async def _generate_content_with_retries(self, max_retries=3):
+        """
+        Generate content using the response generator with retry logic.
+
+        Args:
+            max_retries (int): The maximum number of retries allowed in case of failure.
+
+        Returns:
+            str: The generated content or an error message if all retries fail.
+        """
+        for attempt in range(max_retries):
             try:
-                generated_content = await self.response_generator.generate_content(post_content, content_tone)
-                self.logger.info(f"Generated content on attempt {attempt + 1}")
-                return generated_content
+                content = await self.response_generator.generate_response()
+                return content
             except Exception as e:
-                attempt += 1
-                self.logger.warning(f"Failed to generate content on attempt {attempt}. Error: {e}")
-                if attempt == max_retries:
-                    self.logger.error("Max retries reached. Failing content generation.")
-                    raise e
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                logging.error(f"Attempt {attempt + 1} failed: {e}")
+        return "Failed to generate content after multiple attempts."
 
-    async def _post_content_with_retries(self, platform_integration, content, max_retries=3):
+    async def _post_content_with_retries(self, platform, content, max_retries=3):
         """
-        Post content with retries in case of failure.
+        Post content to a social media platform with retry logic.
 
-        :param platform_integration: The platform integration object (e.g., Instagram, Twitter).
-        :param content: The content to be posted.
-        :param max_retries: Maximum number of retries in case of failure.
-        :return: None
+        Args:
+            platform (str): The social media platform where content will be posted.
+            content (str): The content to post.
+            max_retries (int): The maximum number of retries allowed in case of failure.
         """
-        attempt = 0
-        while attempt < max_retries:
+        for attempt in range(max_retries):
             try:
-                await platform_integration.post_content(content)
-                self.logger.info(f"Posted content on attempt {attempt + 1}")
-                return
+                if platform == 'twitter':
+                    if self.confirm_action(f"posting content to Twitter: {content}"):
+                        await self.twitter.create_post(content)
+                        return
+                elif platform == 'instagram':
+                    if self.confirm_action(f"posting content to Instagram: {content}"):
+                        await self.instagram.create_post(content)
+                        return
             except Exception as e:
-                attempt += 1
-                self.logger.warning(f"Failed to post content on attempt {attempt}. Error: {e}")
-                if attempt == max_retries:
-                    self.logger.error("Max retries reached. Failing content posting.")
-                    raise e
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                logging.error(f"Attempt {attempt + 1} failed: {e}")
+        logging.error("Failed to post content after multiple attempts.")
 
-    async def generate_and_post(self, platform, post_content):
+    async def run(self, platform, action):
         """
-        Generate content and post it to the specified social media platform.
+        Execute the bot's action with proper content generation and posting.
 
-        :param platform: The name of the platform (e.g., 'instagram', 'twitter').
-        :param post_content: The initial content or prompt for generating the post.
+        Args:
+            platform (str): The social media platform to interact with.
+            action (str): The action to perform (e.g., 'create_post').
         """
-        if platform not in self.platforms:
-            self.logger.error(f"Unsupported platform: {platform}")
-            return
-        
-        try:
-            self.logger.info(f"Starting content generation for platform: {platform}")
-            user_prefs = self.user_preferences.get_preferences(platform)
-            content_tone = user_prefs.get("content_tone", "neutral")
-            generated_content = await self._generate_content_with_retries(post_content, content_tone)
-
-            await self._post_content_with_retries(self.platforms[platform], generated_content)
-            self.logger.info(f"Successfully posted content on {platform}: {generated_content}")
-        
-        except Exception as e:
-            self.logger.exception(f"Failed to generate and post content on {platform}: {e}")
-
-    async def reply_to_random_comment(self, platform):
-        """
-        Reply to a random comment on the specified platform.
-
-        :param platform: The name of the platform (e.g., 'instagram', 'twitter').
-        """
-        if platform not in self.platforms:
-            self.logger.error(f"Unsupported platform: {platform}")
-            return
-        
-        try:
-            self.logger.info(f"Fetching comments for {platform}")
-            comments = await self.platforms[platform].get_recent_comments()
-            
-            if not comments:
-                self.logger.info(f"No comments found on {platform} to reply to.")
-                return
-            
-            comment = random.choice(comments)
-            reply = await self.response_generator.generate_personalized_reply(comment)
-            await self.platforms[platform].reply_to_comment(comment, reply)
-            self.logger.info(f"Replied to comment on {platform}: {reply}")
-        
-        except Exception as e:
-            self.logger.exception(f"Failed to reply to a comment on {platform}: {e}")
-
-    def schedule_post(self, platform, post_content, schedule_time):
-        """
-        Schedule a post to be published on the specified platform at a later time.
-
-        :param platform: The name of the platform (e.g., 'instagram', 'twitter').
-        :param post_content: The content to be posted.
-        :param schedule_time: Time delay (in seconds) before posting the content.
-        """
-        try:
-            self.logger.info(f"Scheduling post for {platform} to be published in {schedule_time} seconds")
-            asyncio.get_event_loop().call_later(
-                schedule_time,
-                asyncio.create_task,
-                self.generate_and_post(platform, post_content)
-            )
-        except Exception as e:
-            self.logger.exception(f"Failed to schedule post for {platform}: {e}")
-
-    def run(self, actions):
-        """
-        Execute a series of actions.
-
-        :param actions: A list of actions to perform.
-        """
-        for action in actions:
-            try:
-                action_type = action.get('action_type')
-                platform = action.get('platform')
-
-                if action_type == 'generate_and_post':
-                    post_content = action.get('post_content')
-                    asyncio.run(self.generate_and_post(platform, post_content))
-                elif action_type == 'reply_to_random_comment':
-                    asyncio.run(self.reply_to_random_comment(platform))
-                elif action_type == 'schedule_post':
-                    post_content = action.get('post_content')
-                    schedule_time = action.get('schedule_time')
-                    self.schedule_post(platform, post_content, schedule_time)
-                else:
-                    self.logger.error(f"Unsupported action type: {action_type}")
-
-            except Exception as e:
-                self.logger.exception(f"Failed to execute action {action}: {e}")
+        if action == 'create_post':
+            content = await self._generate_content_with_retries()
+            await self._post_content_with_retries(platform, content)
+        elif action == 'reply_to_comments':
+            await self.reply_to_comments(platform)
+        elif action == 'like_posts':
+            await self.like_posts(platform)
+        elif action == 'follow_users':
+            await self.follow_users(platform)
+        elif action == 'unfollow_users':
+            await self.unfollow_users(platform)

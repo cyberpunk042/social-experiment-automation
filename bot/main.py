@@ -1,5 +1,6 @@
 import argparse
 import logging
+import asyncio
 from bot import Bot
 from bot.config_manager import ConfigManager
 
@@ -10,32 +11,16 @@ def main():
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Social Media Bot - Automate social media tasks.")
-    parser.add_argument('action', choices=['create_post', 'reply_to_comments'], help="Action to perform.")
-    parser.add_argument('--platform', required=True, choices=['instagram', 'twitter'], help="Social media platform.")
-    parser.add_argument('--content', help="Content for the post or reply.")
-    parser.add_argument('--num_comments', type=int, default=1, help="Number of comments to reply to.")
+    parser.add_argument('action', choices=['create_post', 'reply_to_comments', 'like_posts', 'follow_users', 'unfollow_users'], help="Action to perform.")
+    parser.add_argument('--platform', required=True, choices=['twitter', 'instagram'], help="Social media platform.")
+    parser.add_argument('--interactive', action='store_true', help="Prompt for confirmation before sending data.")
     args = parser.parse_args()
 
-    # Initialize the bot
-    config_manager = ConfigManager()
-    bot = Bot()
+    # Initialize bot with or without interactive mode
+    bot = Bot(interactive=args.interactive)
 
-    # Execute the action based on the arguments
-    try:
-        if args.action == 'create_post':
-            if not args.content:
-                logger.error("Content is required to create a post.")
-                return
-            bot.generate_and_post(args.platform, args.content)
-            logger.info(f"Post created on {args.platform} with content: {args.content}")
-        
-        elif args.action == 'reply_to_comments':
-            for _ in range(args.num_comments):
-                bot.reply_to_random_comment(args.platform)
-            logger.info(f"Replied to {args.num_comments} comment(s) on {args.platform}.")
+    # Execute the action specified by the user
+    asyncio.run(bot.run(args.platform, args.action))
 
-    except Exception as e:
-        logger.exception(f"An error occurred while performing the action: {e}")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
