@@ -1,168 +1,138 @@
-import time
 import logging
-from textblob import TextBlob
+from bot.openai_client import OpenAIClient
+from bot.user_preferences import UserPreferences
+from bot.social_media.instagram_api import InstagramAPI
+from bot.social_media.twitter import TwitterAPI
+from bot.config_manager import ConfigManager
+import random
 
 class Bot:
-    def __init__(self, social_media_integrations, openai_client, user_profiles, user_preferences):
+    def __init__(self):
         """
-        Initialize the Bot with social media integrations, OpenAI client, user profiles, and user preferences.
-        
-        :param social_media_integrations: List of social media integration instances.
-        :param openai_client: Instance of the OpenAIClient class.
-        :param user_profiles: Dictionary of user profiles.
-        :param user_preferences: Dictionary of user preferences.
+        Initialize the Bot class, setting up configuration, clients, and platform APIs.
         """
-        self.social_media_integrations = social_media_integrations
-        self.openai_client = openai_client
-        self.user_profiles = user_profiles
-        self.user_preferences = user_preferences
         self.logger = logging.getLogger(__name__)
-        self.logger.info("Bot initialized with provided configurations.")
+        self.config_manager = ConfigManager()
+        self.openai_client = OpenAIClient(self.config_manager)
+        self.user_preferences = UserPreferences()
+        self.platforms = {
+            'instagram': InstagramAPI(self.config_manager),
+            'twitter': TwitterAPI(self.config_manager)
+        }
 
-    def generate_response_options(self, post_content, user_id, context=None, num_options=3):
+    def generate_and_post(self, platform, post_content):
         """
-        Generate multiple response options using OpenAI.
-        
-        :param post_content: The content of the post to respond to.
-        :param user_id: The ID of the user who made the post.
-        :param context: Additional context to consider when generating the response.
-        :param num_options: The number of response options to generate.
-        :return: A list of generated response options.
-        """
-        self.logger.info(f"Generating {num_options} response options for post by user {user_id}.")
-        user_profile = self.user_profiles.get(user_id)
-        user_preference = self.user_preferences.get(user_id)
-        tone = user_preference.get('preferred_tone', 'neutral')
-        responses = []
-        
-        for i in range(num_options):
-            prompt = f"Using a {tone} tone, and considering the user's profile: {user_profile}, generate a response to this post: {post_content}"
-            if context:
-                prompt += f" Context: {context}"
-            try:
-                response = self.openai_client.complete(prompt)
-                responses.append(response)
-                self.logger.info(f"Generated response option {i+1}: {response}")
-            except Exception as e:
-                self.logger.error(f"Error generating response option {i+1}: {e}")
-        
-        return responses
+        Generate a post using OpenAI and publish it on the specified platform.
 
-    def select_best_response(self, responses, post_content):
+        :param platform: The platform to publish the post on ('instagram' or 'twitter').
+        :param post_content: The content to seed the OpenAI prompt with.
         """
-        Use OpenAI to evaluate and select the best response from a list of options.
-        
-        :param responses: A list of generated response options.
-        :param post_content: The content of the original post.
-        :return: The selected best response.
-        """
-        self.logger.info("Selecting the best response from the generated options.")
-        evaluation_prompt = (
-            "You are an expert in communication. Below are several potential responses to the following post:\n\n"
-            f"Post content: {post_content}\n\n"
-            "Responses:\n"
-        )
-        for idx, response in enumerate(responses, 1):
-            evaluation_prompt += f"{idx}. {response}\n"
-
-        evaluation_prompt += (
-            "\nChoose the response that best matches the tone and context, and explain why it is the best choice."
-        )
+        if platform not in self.platforms:
+            self.logger.error(f"Unsupported platform: {platform}")
+            return
 
         try:
-            evaluation_result = self.openai_client.complete(evaluation_prompt)
-            self.logger.info(f"Evaluation result: {evaluation_result}")
-            selected_response_index = self._extract_selected_response(evaluation_result)
-            self.logger.info(f"Selected response index: {selected_response_index}")
-            return responses[selected_response_index - 1]  # Adjusting for 1-based index
+            self.logger.info(f"Generating post for {platform}")
+            generated_content = self.openai_client.complete(post_content)
+            self.platforms[platform].create_post(generated_content)
+            self.logger.info(f"Post successfully created on {platform}")
         except Exception as e:
-            self.logger.error(f"Error selecting best response: {e}")
-            return responses[0] if responses else "I'm sorry, I can't generate a response right now."
+            self.logger.error(f"Failed to generate and post content on {platform}: {e}")
 
-    def _extract_selected_response(self, evaluation_result):
+    def reply_to_random_comment(self, platform):
         """
-        Extract the selected response index from OpenAI's evaluation result.
-        
-        :param evaluation_result: The result returned by OpenAI after evaluating the responses.
-        :return: The index of the selected response.
+        Reply to a random comment on the specified platform using a personalized LLM chain.
+
+        :param platform: The platform to interact with ('instagram' or 'twitter').
         """
-        self.logger.info("Extracting selected response index from evaluation result.")
-        import re
-        match = re.search(r'Response (\d+)', evaluation_result)
-        if match:
-            selected_index = int(match.group(1))
-            self.logger.info(f"Selected response index extracted: {selected_index}")
-            return selected_index
-        else:
-            self.logger.warning("No response index found in evaluation result, defaulting to first response.")
-            return 1  # Default to the first response
+        if platform not in self.platforms:
+            self.logger.error(f"Unsupported platform: {platform}")
+            return
 
-    def generate_response(self, post_content, user_id, context=None):
-        """
-        Generate and select the best response to a given post.
-        
-        :param post_content: The content of the post to respond to.
-        :param user_id: The ID of the user who made the post.
-        :param context: Additional context to consider when generating the response.
-        :return: The selected best response.
-        """
-        self.logger.info(f"Generating response for post by user {user_id}.")
-        responses = self.generate_response_options(post_content, user_id, context)
-        return self.select_best_response(responses, post_content)
-
-    def run(self, identifier, context=None):
-        """
-        Run the bot to generate and post responses to a series of posts.
-        
-        :param identifier: A unique identifier, such as a hashtag, to retrieve posts.
-        :param context: Additional context to consider when generating responses.
-        """
-        self.logger.info(f"Running bot for identifier: {identifier}")
-        for integration in self.social_media_integrations:
-            try:
-                posts = integration.get_posts(identifier)
-                for post in posts:
-                    response = self.generate_response(post['content'], post['user_id'], context)
-                    integration.post_response(post['id'], response)
-                    self.logger.info(f"Posted response to post ID {post['id']}")
-            except Exception as e:
-                self.logger.error(f"Error running bot for {identifier}: {e}")
-
-    def analyze_sentiment(self, post_content):
-        blob = TextBlob(post_content)
-        return blob.sentiment.polarity  # Returns a value between -1 (negative) and 1 (positive)
-
-
-    def get_user_data(self, user_id):
-        return self.user_profiles.get(user_id), self.user_preferences.get(user_id)
-
-    def create_prompt(self, post_content, user_profile, tone, sentiment, context):
-        sentiment_description = "positive" if sentiment > 0 else "negative" if sentiment < 0 else "neutral"
-        prompt = f"Using a {tone} tone, considering sentiment ({sentiment_description}), and user's profile: {user_profile}, generate a response to this post: {post_content}"
-        if context:
-            prompt += f" Context: {context}"
-        return prompt
-
-    def execute_openai_call(self, prompt):
         try:
-            start_time = time.time()
-            response = self.openai_client.complete(prompt)
-            end_time = time.time()
-            self.logger.info(f"Response generated in {end_time - start_time:.2f} seconds.")
-            return response
+            self.logger.info(f"Replying to random comment on {platform}")
+            comments = self.platforms[platform].get_recent_comments()
+            if not comments:
+                self.logger.info(f"No comments available to reply to on {platform}")
+                return
+
+            comment_to_reply = self._select_random_comment(comments)
+            if comment_to_reply:
+                reply = self._generate_personalized_reply(comment_to_reply)
+                self.platforms[platform].reply_to_comment(comment_to_reply['id'], reply)
+                self.logger.info(f"Reply successfully posted on {platform}")
+            else:
+                self.logger.info(f"No valid comment found to reply to on {platform}")
         except Exception as e:
-            self.logger.error(f"Error generating response: {e}")
-            return "I'm sorry, I can't generate a response right now."
+            self.logger.error(f"Failed to reply to comment on {platform}: {e}")
 
-    def log_event_processing(self, event_type, start_time, end_time, event_data):
-        processing_time = end_time - start_time
-        self.logger.info(f"Processed event '{event_type}' in {processing_time:.2f} seconds with data: {event_data}")
+    def _select_random_comment(self, comments):
+        """
+        Select a random comment from a list of comments.
 
-    def process_posts(self, integration, identifier, context):
-        start_time = time.time()
-        posts = integration.get_posts(identifier)
-        for post in posts:
-            response = self.generate_response(post['content'], post['user_id'], context)
-            integration.post_response(post['id'], response)
-        end_time = time.time()
-        self.logger.info(f"Processed {len(posts)} posts in {end_time - start_time:.2f} seconds.")
+        :param comments: A list of comments.
+        :return: A randomly selected comment.
+        """
+        if comments:
+            return random.choice(comments)
+        self.logger.warning("No comments provided for selection")
+        return None
+
+    def _generate_personalized_reply(self, comment):
+        """
+        Generate a personalized reply to a comment using OpenAI and user preferences.
+
+        :param comment: The comment to reply to.
+        :return: A generated reply.
+        """
+        try:
+            user_pref = self.user_preferences.get_preferences(comment['user_id'])
+            prompt = f"Based on the user's preferences: {user_pref}, reply to the comment: {comment['text']}"
+            return self.openai_client.complete(prompt)
+        except Exception as e:
+            self.logger.error(f"Failed to generate personalized reply: {e}")
+            return "Sorry, couldn't generate a reply."
+
+    def schedule_post(self, platform, post_content, schedule_time):
+        """
+        Schedule a post to be published at a specific time.
+
+        :param platform: The platform to publish the post on ('instagram' or 'twitter').
+        :param post_content: The content to seed the OpenAI prompt with.
+        :param schedule_time: The time to schedule the post.
+        """
+        try:
+            self.logger.info(f"Scheduling post for {platform} at {schedule_time}")
+            # Logic to handle scheduling could involve adding the post to a queue or using a task scheduler.
+            # Placeholder logic for demonstration:
+            import time
+            time.sleep(schedule_time)
+            self.generate_and_post(platform, post_content)
+        except Exception as e:
+            self.logger.error(f"Failed to schedule post for {platform}: {e}")
+
+    def run(self, actions):
+        """
+        Run the bot to perform a series of actions. This function serves as the entry point for the bot's operation.
+
+        :param actions: A list of actions to perform, where each action is a dictionary with 'action_type', 
+                        'platform', and any additional parameters required for the action.
+        """
+        for action in actions:
+            action_type = action.get('action_type')
+            platform = action.get('platform')
+
+            if action_type == 'generate_and_post':
+                post_content = action.get('post_content')
+                self.generate_and_post(platform, post_content)
+
+            elif action_type == 'reply_to_random_comment':
+                self.reply_to_random_comment(platform)
+
+            elif action_type == 'schedule_post':
+                post_content = action.get('post_content')
+                schedule_time = action.get('schedule_time')
+                self.schedule_post(platform, post_content, schedule_time)
+
+            else:
+                self.logger.error(f"Unsupported action type: {action_type}")
