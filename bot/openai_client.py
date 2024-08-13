@@ -1,12 +1,12 @@
 import openai
 import logging
-from config_manager import ConfigManager
+from bot.config_manager import ConfigManager
 
 class OpenAIClient:
-    def __init__(self, config_manager):
+    def __init__(self, config_manager: ConfigManager):
         """
         Initialize the OpenAIClient using the configuration manager to retrieve the API key.
-        
+
         :param config_manager: An instance of ConfigManager to retrieve configuration settings.
         """
         self.api_key = config_manager.get("openai", "api_key")
@@ -17,7 +17,7 @@ class OpenAIClient:
     def complete(self, prompt, max_tokens=150, temperature=0.7, n=1):
         """
         Generate a completion for the given prompt using the OpenAI API.
-        
+
         :param prompt: The text prompt to generate a response for.
         :param max_tokens: The maximum number of tokens in the generated response.
         :param temperature: The sampling temperature to use, higher values mean more random completions.
