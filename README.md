@@ -40,7 +40,7 @@ social_experiment_automation/
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/your-username/social-experiment-automation.git
+   git clone https://github.com/cyberpunk042/social-experiment-automation.git
    cd social-experiment-automation
    ```
 
