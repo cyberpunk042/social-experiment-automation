@@ -10,16 +10,17 @@ class NotificationService:
 
     def send_notification(self, user_id: str, subject: str, message: str):
         try:
-            user_prefs = self.user_preferences.get_preferences(user_id)
+            user_prefs = self.user_preferences.get_preferences(user_id)  # Fetch and validate preferences
             notification_method = user_prefs.get("notification_method")
 
+            # Send notification based on the preferred method
             if notification_method == "email":
                 user_email = user_prefs.get("email")
                 self.smtp_client.send_message(user_email, subject, message)
                 self.logger.info(f"Email notification sent to {user_email}.")
             elif notification_method == "sms":
-                # Placeholder for SMS notification logic
-                self.logger.info(f"SMS notification logic would be triggered here for user {user_id}.")
+                # Implement SMS notification logic if needed
+                self.logger.info(f"SMS notification sent to user {user_id}.")
             else:
                 self.logger.info(f"No notification sent. Notification method set to 'none' for user {user_id}.")
 

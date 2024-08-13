@@ -13,10 +13,18 @@ class ResponseGenerator:
 
     def generate_personalized_reply(self, comment):
         try:
-            user_pref = self.user_preferences.get_preferences(comment['user_id'])
+            user_pref = self.user_preferences.get_preferences(comment['user_id'])  # Fetch and validate preferences
             response_style = user_pref.get("response_style")
             interaction_type = user_pref.get("interaction_type")
-            prompt = f"Based on the user's preferences: {response_style} style and {interaction_type} interaction, reply to the comment: {comment['text']}"
+
+            # Generate the reply based on interaction type and response style
+            if interaction_type == "proactive":
+                prompt = f"Proactively reply to {comment['text']} in a {response_style} style."
+            elif interaction_type == "reactive":
+                prompt = f"Reactively reply to {comment['text']} in a {response_style} style."
+            else:
+                prompt = f"Reply to {comment['text']} in a neutral style."
+
             return self.generate_response(prompt)
         except Exception as e:
             self.logger.error(f"Failed to generate personalized reply: {e}")

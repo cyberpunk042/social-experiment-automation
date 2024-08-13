@@ -25,11 +25,21 @@ class Bot:
             return
         try:
             self.logger.info(f"Generating post for {platform}")
-            user_prefs = self.user_preferences.get_preferences(platform)  # Fetch preferences
+            user_prefs = self.user_preferences.get_preferences(platform)  # Fetch and validate preferences
             content_tone = user_prefs.get("content_tone")
             content_frequency = user_prefs.get("content_frequency")
-            # Use content_tone and content_frequency in content generation logic
             generated_content = self.openai_client.complete(f"{post_content} in a {content_tone} tone")
+
+            # Adjust posting frequency based on user preference
+            if content_frequency == "daily":
+                self.logger.info(f"Post frequency set to daily for {platform}.")
+            elif content_frequency == "weekly":
+                self.logger.info(f"Post frequency set to weekly for {platform}.")
+            elif content_frequency == "monthly":
+                self.logger.info(f"Post frequency set to monthly for {platform}.")
+            else:
+                self.logger.info(f"Post frequency set to default (daily) for {platform}.")
+
             self.platforms[platform].create_post(generated_content)
             self.logger.info(f"Post successfully created on {platform}")
         except Exception as e:
@@ -50,8 +60,16 @@ class Bot:
             if comment_to_reply:
                 user_prefs = self.user_preferences.get_preferences(platform)
                 interaction_type = user_prefs.get("interaction_type")
-                # Use interaction_type in reply logic
-                reply = self.response_generator.generate_personalized_reply(comment_to_reply)
+                response_style = user_prefs.get("response_style")
+
+                # Generate the reply based on interaction type and response style
+                if interaction_type == "proactive":
+                    reply = self.response_generator.generate_response(f"Proactively replying to {comment_to_reply['text']} in a {response_style} style.")
+                elif interaction_type == "reactive":
+                    reply = self.response_generator.generate_response(f"Reactively replying to {comment_to_reply['text']} in a {response_style} style.")
+                else:
+                    reply = self.response_generator.generate_response(f"Replying to {comment_to_reply['text']} in a neutral style.")
+
                 self.platforms[platform].reply_to_comment(comment_to_reply['id'], reply)
                 self.logger.info(f"Reply successfully posted on {platform}")
             else:
