@@ -1,9 +1,10 @@
+#TODO: redo page
 # bot/instapy_integration.py
 from instapy import InstaPy
-from bot.social_media.base import SocialMediaIntegrationBase
 import logging
 
-class InstaPyIntegration(SocialMediaIntegrationBase):
+#TODO: redo class, align with instagram_api functions
+class InstaPyIntegration():
     def __init__(self, username, password):
         self.logger = logging.getLogger(__name__)
         try:
