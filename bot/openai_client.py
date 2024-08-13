@@ -2,6 +2,7 @@ import openai
 import logging
 from bot.config_manager import ConfigManager
 from time import sleep
+from requests.exceptions import Timeout, RequestException
 
 class OpenAIClient:
     def __init__(self, config_manager: ConfigManager):
@@ -28,15 +29,16 @@ class OpenAIClient:
         :param timeout: Timeout in seconds for the API call.
         :return: The generated text completion.
         """
+        # Parameter validation
+        if not 1 <= max_tokens <= 2048:
+            raise ValueError("max_tokens must be between 1 and 2048.")
+        if not 0.0 <= temperature <= 1.0:
+            raise ValueError("temperature must be between 0.0 and 1.0.")
+        
         self.logger.info(f"Generating completion for prompt: {prompt[:50]}...")
 
-        # Validate parameters
-        if not prompt or max_tokens <= 0 or temperature < 0 or temperature > 1 or n <= 0:
-            self.logger.error("Invalid parameters for completion generation.")
-            return "Invalid input parameters."
-
-        attempt = 0
-        while attempt < retries:
+        # Retry logic
+        for attempt in range(retries):
             try:
                 response = openai.Completion.create(
                     engine=self.engine,
@@ -46,22 +48,31 @@ class OpenAIClient:
                     n=n,
                     timeout=timeout
                 )
-                completion_text = response.choices[0].text.strip()
-                self.logger.info(f"Generated completion: {completion_text[:50]}...")
-                return completion_text
+                self.logger.info("Completion generated successfully.")
+                return response.choices[0].text.strip()
+
+            except (Timeout, RequestException) as e:
+                self.logger.warning(f"Request failed with error: {e}. Retrying {retries - attempt - 1} more times...")
+                sleep(2)  # Backoff before retrying
+
+            except openai.error.RateLimitError as e:
+                self.logger.error("Rate limit exceeded. Pausing before retrying...")
+                sleep(60)  # Wait for a minute before retrying
+                continue
 
             except openai.error.OpenAIError as e:
-                self.logger.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
-                if isinstance(e, openai.error.RateLimitError):
-                    sleep(2 ** attempt)  # Exponential backoff for rate limit errors
-                else:
-                    break  # Do not retry for non-transient errors
+                self.logger.error(f"OpenAI API error: {e}.")
+                raise
 
-            except Exception as e:
-                self.logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
-                break
+        # If all retries fail, raise an exception
+        raise Exception("Failed to generate completion after multiple attempts.")
 
-            attempt += 1
-            self.logger.info(f"Retrying... (attempt {attempt + 1})")
-
-        return "I'm sorry, I can't generate a response right now."
+# Example usage of the OpenAIClient with parameter validation and error handling
+if __name__ == "__main__":
+    config = ConfigManager()
+    client = OpenAIClient(config)
+    try:
+        result = client.complete("Hello, how are you?", max_tokens=50)
+        print(result)
+    except Exception as e:
+        print(f"Error: {e}")

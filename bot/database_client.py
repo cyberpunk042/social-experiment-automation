@@ -1,13 +1,18 @@
 import logging
 import supabase
+import threading
 from bot.config_manager import ConfigManager
 
+# Updated DatabaseClient with thread-safe Singleton and enhanced logging
 class DatabaseClient:
     _instance = None
+    _lock = threading.Lock()
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(DatabaseClient, cls).__new__(cls, *args, **kwargs)
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = super(DatabaseClient, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self, config_manager: ConfigManager):
@@ -36,7 +41,7 @@ class DatabaseClient:
                 self.logger.warning(f"No user preferences found for user_id: {user_id}")
                 return None
         except Exception as e:
-            self.logger.error(f"Failed to retrieve user preferences for user_id: {user_id} - {e}")
+            self.logger.error(f"Error retrieving user preferences for user_id {user_id}: {e}")
             return None
 
     def update_user_preferences(self, user_id, preferences):

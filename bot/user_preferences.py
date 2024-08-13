@@ -121,3 +121,4 @@ class UserPreferences:
             preferences["interaction_type"] = self.config_manager.get("default_interaction_type", "reactive")
 
         return preferences
+

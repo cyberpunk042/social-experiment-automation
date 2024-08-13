@@ -4,44 +4,54 @@ import random
 
 class ResponseGenerator:
     def __init__(self, openai_client: OpenAIClient, user_preferences):
+        """
+        Initialize the ResponseGenerator class.
+
+        :param openai_client: The OpenAIClient instance used for generating responses.
+        :param user_preferences: The UserPreferences instance used for retrieving user-specific settings.
+        """
         self.openai_client = openai_client
         self.user_preferences = user_preferences
         self.logger = logging.getLogger(__name__)
 
-    def generate_response(self, prompt):
-        return self.openai_client.complete(prompt)
+    async def generate_response(self, prompt):
+        """
+        Generate a response based on the provided prompt.
 
-    def generate_personalized_reply(self, comment):
+        :param prompt: The text prompt to generate a response for.
+        :return: The generated response as a string, or an error message if generation fails.
+        """
         try:
-            user_pref = self.user_preferences.get_preferences(comment['user_id'])  # Fetch and validate preferences
-            response_style = user_pref.get("response_style")
-            interaction_type = user_pref.get("interaction_type")
+            return self.openai_client.complete(prompt)
+        except Exception as e:
+            self.logger.error(f"Failed to generate response for prompt '{prompt}': {e}")
+            return "Sorry, I couldn't generate a response."
 
-            # Generate the reply based on interaction type and response style
-            if interaction_type == "proactive":
-                prompt = f"Proactively reply to {comment['text']} in a {response_style} style."
-            elif interaction_type == "reactive":
-                prompt = f"Reactively reply to {comment['text']} in a {response_style} style."
-            else:
-                prompt = f"Reply to {comment['text']} in a neutral style."
+    async def generate_personalized_reply(self, comment):
+        """
+        Generate a personalized reply to a comment based on user preferences.
 
-            return self.generate_response(prompt)
+        :param comment: The comment to reply to.
+        :return: The generated reply as a string, or an error message if generation fails.
+        """
+        try:
+            user_pref = self.user_preferences.get_preferences(comment['user_id'])
+            response_style = user_pref.get("response_style", "neutral")
+            interaction_type = user_pref.get("interaction_type", "neutral")
+
+            prompt = f"Reply to {comment['text']} in a {response_style} style."
+            return await self.generate_response(prompt)
         except Exception as e:
             self.logger.error(f"Failed to generate personalized reply: {e}")
             return "Sorry, couldn't generate a reply."
 
-    def select_random_comment(self, comments):
+    async def select_random_comment(self, comments):
+        """
+        Select a random comment from the provided list of comments.
+
+        :param comments: A list of comments.
+        :return: A randomly selected comment, or None if the list is empty.
+        """
         if comments:
             return random.choice(comments)
-        self.logger.warning("No comments provided for selection")
         return None
-
-    def post_responses(self, social_media_integration, posts):
-        for post in posts:
-            prompt = self.create_prompt(post)
-            response = self.generate_response(prompt)
-            social_media_integration.post_response(post['id'], response)
-
-    @staticmethod
-    def create_prompt(post):
-        return f"Respond to the following post: {post['text']}"
