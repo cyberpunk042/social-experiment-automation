@@ -1,4 +1,3 @@
-# bot/bot.py
 
 import logging
 from bot.openai_client import OpenAIClient
@@ -6,6 +5,7 @@ from bot.user_preferences import UserPreferences
 from bot.social_media.instagram_api import InstagramIntegration
 from bot.social_media.twitter import TwitterIntegration
 from bot.config_manager import ConfigManager
+from bot.response_generator import ResponseGenerator
 import random
 
 class Bot:
@@ -14,6 +14,7 @@ class Bot:
         self.config_manager = ConfigManager()
         self.openai_client = OpenAIClient(self.config_manager)
         self.user_preferences = UserPreferences(self.config_manager)
+        self.response_generator = ResponseGenerator(self.openai_client, self.user_preferences)
         self.platforms = {
             'instagram': InstagramIntegration(self.config_manager),
             'twitter': TwitterIntegration(self.config_manager)
@@ -41,30 +42,15 @@ class Bot:
             if not comments:
                 self.logger.info(f"No comments available to reply to on {platform}")
                 return
-            comment_to_reply = self._select_random_comment(comments)
+            comment_to_reply = self.response_generator.select_random_comment(comments)
             if comment_to_reply:
-                reply = self._generate_personalized_reply(comment_to_reply)
+                reply = self.response_generator.generate_personalized_reply(comment_to_reply)
                 self.platforms[platform].reply_to_comment(comment_to_reply['id'], reply)
                 self.logger.info(f"Reply successfully posted on {platform}")
             else:
                 self.logger.info(f"No valid comment found to reply to on {platform}")
         except Exception as e:
             self.logger.error(f"Failed to reply to comment on {platform}: {e}")
-
-    def _select_random_comment(self, comments):
-        if comments:
-            return random.choice(comments)
-        self.logger.warning("No comments provided for selection")
-        return None
-
-    def _generate_personalized_reply(self, comment):
-        try:
-            user_pref = self.user_preferences.get_preferences(comment['user_id'])
-            prompt = f"Based on the user's preferences: {user_pref}, reply to the comment: {comment['text']}"
-            return self.openai_client.complete(prompt)
-        except Exception as e:
-            self.logger.error(f"Failed to generate personalized reply: {e}")
-            return "Sorry, couldn't generate a reply."
 
     def schedule_post(self, platform, post_content, schedule_time):
         try:
