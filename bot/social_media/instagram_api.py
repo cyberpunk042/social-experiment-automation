@@ -18,22 +18,18 @@ class InstagramIntegration(SocialMediaIntegrationBase):
         try:
             response = self.session.get(url)
             response.raise_for_status()
-            self.logger.info(f"Successfully fetched posts for hashtag: {hashtag}")
+            self.logger.info(f"Fetched posts for hashtag: {hashtag}")
             return response.json()['data']
-        except HTTPError as http_err:
-            self.logger.error(f"HTTP error occurred: {http_err}")
-        except Exception as err:
-            self.logger.error(f"An error occurred: {err}")
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error fetching posts: {e}")
         finally:
-            time.sleep(1)  # Rate limiting
+            time.sleep(1)  # Basic rate limiting
 
     def post_response(self, post_id, response):
         url = f"{self.BASE_URL}/media/{post_id}/comments"
         try:
             response = self.session.post(url, data={'text': response})
             response.raise_for_status()
-            self.logger.info(f"Successfully posted a comment on post {post_id}.")
-        except HTTPError as http_err:
-            self.logger.error(f"HTTP error occurred: {http_err}")
-        except Exception as err:
-            self.logger.error(f"An error occurred: {err}")
+            self.logger.info(f"Posted comment on post {post_id}")
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error posting comment: {e}")
