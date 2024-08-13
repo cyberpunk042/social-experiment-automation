@@ -15,21 +15,22 @@ class InstagramIntegration(SocialMediaIntegrationBase):
 
     def get_posts(self, hashtag):
         url = f"{self.BASE_URL}/tags/{hashtag}/media/recent"
-        try:
-            response = self.session.get(url)
-            response.raise_for_status()
-            self.logger.info(f"Fetched posts for hashtag: {hashtag}")
-            return response.json()['data']
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error fetching posts: {e}")
-        finally:
-            time.sleep(1)  # Basic rate limiting
+        return self._make_api_call(url, "GET")
 
     def post_response(self, post_id, response):
         url = f"{self.BASE_URL}/media/{post_id}/comments"
+        data = {'text': response}
+        return self._make_api_call(url, "POST", data=data)
+
+    def _make_api_call(self, url, method, data=None):
         try:
-            response = self.session.post(url, data={'text': response})
+            if method == "GET":
+                response = self.session.get(url)
+            elif method == "POST":
+                response = self.session.post(url, data=data)
             response.raise_for_status()
-            self.logger.info(f"Posted comment on post {post_id}")
+            return response.json()
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error posting comment: {e}")
+            self.logger.error(f"API call error: {e}")
+            time.sleep(1)  # Basic rate limit handling
+            return None
