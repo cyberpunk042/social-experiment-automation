@@ -1,5 +1,3 @@
-# bot/database_client.py
-
 import logging
 import supabase
 from bot.config_manager import ConfigManager
@@ -18,18 +16,27 @@ class DatabaseClient:
         self.logger = logging.getLogger(__name__)
         self.supabase_url = config_manager.get("supabase_url")
         self.supabase_key = config_manager.get("supabase_key")
-        self.client = supabase.create_client(self.supabase_url, self.supabase_key)
+
+        try:
+            self.client = supabase.create_client(self.supabase_url, self.supabase_key)
+            self.logger.info("Supabase client initialized successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize Supabase client: {e}")
+            raise
+
         self._initialized = True
 
     def get_user_preferences(self, user_id):
         try:
             response = self.client.from_("user_preferences").select("*").eq("user_id", user_id).execute()
             if response.status_code == 200 and response.data:
-                return response.data[0]
-            self.logger.info(f"No preferences found for user {user_id}")
-            return None
+                self.logger.info(f"User preferences retrieved for user_id: {user_id}")
+                return response.data
+            else:
+                self.logger.warning(f"No user preferences found for user_id: {user_id}")
+                return None
         except Exception as e:
-            self.logger.error(f"Failed to retrieve preferences for user {user_id}: {e}")
+            self.logger.error(f"Failed to retrieve user preferences for user_id: {user_id} - {e}")
             return None
 
     def update_user_preferences(self, user_id, preferences):
