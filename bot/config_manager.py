@@ -9,6 +9,8 @@ class ConfigManager:
         load_dotenv()
         self.instagram_api_key = os.getenv('INSTAGRAM_API_KEY')
         self.openai_api_key = os.getenv('OPENAI_API_KEY')
+        self.twitter_api_key = os.getenv('TWITTER_API_KEY')
+        self.facebook_api_key = os.getenv('FACEBOOK_API_KEY')
 
         # Ensure that the API keys are present
         if not self.instagram_api_key or not self.openai_api_key:
