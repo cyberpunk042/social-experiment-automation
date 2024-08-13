@@ -16,14 +16,24 @@ class EventSystem:
     def notify(self, event_type, data, delay_seconds=0):
         event_time = datetime.now() + timedelta(seconds=delay_seconds)
         self.event_queue.put((event_time, event_type, data))
-
+        
+    def should_process_event(self, event_type, data):
+        # Add logic to determine if the event should be processed
+        # Example: only process if user engagement is high
+        engagement_level = data.get('engagement_level', 'medium')
+        return engagement_level in ['high', 'medium']
+    
     def process_events(self):
         while not self.event_queue.empty():
             event_time, event_type, data = self.event_queue.get()
+            start_time = datetime.now()
             if datetime.now() >= event_time:
                 if event_type in self.subscribers:
                     for _, subscriber in self.subscribers[event_type]:
-                        subscriber.update(event_type, data)
+                        if self.should_process_event(event_type, data):
+                            subscriber.update(event_type, data)
+                            end_time = datetime.now()
+                            self.log_event_processing(event_type, start_time, end_time, data)
             else:
                 # Re-queue the event if it's not yet time
                 self.event_queue.put((event_time, event_type, data))

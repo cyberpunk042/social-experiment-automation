@@ -1,6 +1,6 @@
 # bot/notification_service.py
 import logging
-from messaging_client import MessagingClient
+from messaging_client import MessagingClient # TODO: Replace with something valid. SMTP Client Class with module.
 
 logger = logging.getLogger(__name__)
 
