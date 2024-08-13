@@ -26,6 +26,7 @@ class Bot:
             return
         try:
             self.logger.info(f"Generating post for {platform}")
+            self.user_preferences.refresh_preferences(platform)  # Refresh preferences before generating content
             generated_content = self.openai_client.complete(post_content)
             self.platforms[platform].create_post(generated_content)
             self.logger.info(f"Post successfully created on {platform}")
@@ -42,6 +43,7 @@ class Bot:
             if not comments:
                 self.logger.info(f"No comments available to reply to on {platform}")
                 return
+            self.user_preferences.refresh_preferences(platform)  # Refresh preferences before generating a reply
             comment_to_reply = self.response_generator.select_random_comment(comments)
             if comment_to_reply:
                 reply = self.response_generator.generate_personalized_reply(comment_to_reply)
