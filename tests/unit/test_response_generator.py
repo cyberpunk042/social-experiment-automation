@@ -6,13 +6,16 @@ from bot.database_client import DatabaseClient
 from bot.user_preferences import UserPreferences
 
 class TestResponseGenerator(unittest.TestCase):
+    """Test suite for the ResponseGenerator class."""
 
     def setUp(self):
-        # Mocking the dependencies
+        """Set up the test environment by mocking dependencies and initializing ResponseGenerator."""
+        # Mocking dependencies
         self.mock_openai_client = MagicMock(spec=OpenAIClient)
         self.mock_database_client = MagicMock(spec=DatabaseClient)
         self.mock_user_preferences = MagicMock(spec=UserPreferences)
         
+        # Initializing ResponseGenerator with mocked dependencies
         self.response_generator = ResponseGenerator(
             self.mock_openai_client,
             self.mock_database_client,
@@ -20,6 +23,7 @@ class TestResponseGenerator(unittest.TestCase):
         )
 
     def test_generate_caption_success(self):
+        """Test successful caption generation with valid data."""
         # Mocking database response and user preferences
         self.mock_database_client.get_table.return_value = ["Sample caption"]
         self.mock_user_preferences.select_preferred_caption.return_value = "Sample caption"
@@ -32,7 +36,8 @@ class TestResponseGenerator(unittest.TestCase):
         self.assertEqual(result, "Personalized caption")
 
     def test_generate_caption_no_captions(self):
-        # Simulating a situation where no captions are found in the database
+        """Test handling when no captions are found in the database."""
+        # Simulating a situation where no captions are available
         self.mock_database_client.get_table.return_value = []
 
         with self.assertRaises(Exception) as context:
@@ -40,9 +45,30 @@ class TestResponseGenerator(unittest.TestCase):
 
         self.assertIn("No captions found", str(context.exception))
 
+    def test_generate_caption_empty_database_response(self):
+        """Test handling of an empty response from the database."""
+        self.mock_database_client.get_table.return_value = []
+
+        with self.assertRaises(Exception) as context:
+            self.response_generator.generate_caption()
+
+        self.assertIn("No captions found", str(context.exception))
+
+    def test_generate_caption_missing_user_preferences(self):
+        """Test handling when user preferences are not set."""
+        self.mock_database_client.get_table.return_value = ["Sample caption"]
+        self.mock_user_preferences.select_preferred_caption.return_value = "Sample caption"
+        self.mock_user_preferences.response_style = None  # Missing preferences
+        self.mock_user_preferences.content_tone = None
+
+        with self.assertRaises(Exception) as context:
+            self.response_generator.generate_caption()
+
+        self.assertIn("Error retrieving or personalizing caption", str(context.exception))
+
     @patch('bot.openai_client.OpenAIClient.generate_image')
     def test_generate_image_success(self, mock_generate_image):
-        # Mocking user preferences and OpenAI image generation
+        """Test successful image generation with valid preferences."""
         self.mock_user_preferences.get_image_preferences.return_value = {
             "style": "minimalist",
             "color_scheme": "monochrome"
@@ -54,11 +80,20 @@ class TestResponseGenerator(unittest.TestCase):
 
     @patch('bot.openai_client.OpenAIClient.generate_image', side_effect=Exception("Image generation failed"))
     def test_generate_image_failure(self, mock_generate_image):
-        # Simulating an image generation failure
+        """Test handling of image generation failure."""
         self.mock_user_preferences.get_image_preferences.return_value = {
             "style": "minimalist",
             "color_scheme": "monochrome"
         }
+
+        with self.assertRaises(Exception) as context:
+            self.response_generator.generate_image("Sample caption")
+
+        self.assertIn("Image generation failed", str(context.exception))
+
+    def test_generate_image_missing_preferences(self):
+        """Test handling when image preferences are missing."""
+        self.mock_user_preferences.get_image_preferences.return_value = {}
 
         with self.assertRaises(Exception) as context:
             self.response_generator.generate_image("Sample caption")

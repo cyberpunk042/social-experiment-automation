@@ -1,137 +1,128 @@
-# Social Experiment Automation Bot
+# Social Experiment Automation
 
-This project is an automation bot designed to interact with social media platforms like Instagram and Twitter. It can automatically generate and post content, reply to comments, and handle user preferences. The bot integrates with the OpenAI API for content generation and supports real-time updates via Supabase.
+This project automates interactions on social media platforms, particularly Instagram, using a bot that can create posts, comment on posts, and reply to comments. The bot leverages OpenAI for generating content and interacts with Instagram`s API to automate these tasks.
 
 ## Features
 
-- **Automated Posting**: Generate and post content to Instagram and Twitter.
-- **Automated Replies**: Reply to comments on social media posts based on user-defined preferences.
-- **Real-Time Updates**: Subscribe to database changes via Supabase and trigger events in real-time.
-- **User Preferences Management**: Store and retrieve user-specific preferences for content generation and interaction styles.
-- **Notification Service**: Send notifications via email with support for both plain text and HTML formats.
-- **Error Handling & Logging**: Robust error handling and comprehensive logging throughout the application.
+- **Automated Post Creation**: Generates and posts images with captions to Instagram.
+- **Commenting**: Posts comments on existing Instagram posts.
+- **Replying to Comments**: Automatically replies to comments on Instagram posts.
+- **Integration Tests**: End-to-end tests using real API interactions to validate the bot`s functionality.
 
-## Project Structure
+## Setup
 
-```
-social_experiment_automation/
-│
-├── bot/
-│   ├── __init__.py
-│   ├── bot.py                    # Main bot logic for interacting with social media platforms
-│   ├── config_manager.py         # Manages configuration settings using environment variables
-│   ├── database_client.py        # Handles database interactions with Supabase
-│   ├── event_system.py           # Manages event-driven architecture and subscribers
-│   ├── instagram_api.py          # Handles interactions with Instagram's API
-│   ├── twitter.py                # Handles interactions with Twitter's API
-│   ├── notification_service.py   # Sends notifications via email
-│   ├── openai_client.py          # Interacts with OpenAI's API for content generation
-│   ├── real_time_updates.py      # Manages real-time updates via Supabase
-│   ├── response_generator.py     # Generates content and replies using OpenAI
-│   ├── smtp_client.py            # Handles sending emails using SMTP
-│   ├── user_preferences.py       # Manages user-specific preferences
-│   └── main.py                   # Entry point to run bot tasks from the command line
-│
-└── README.md                     # Project documentation
-```
+### Prerequisites
 
-## Installation
+- Python 3.8+
+- Poetry (Python dependency management tool)
+- Instagram API credentials
+- OpenAI API credentials
 
-1. **Clone the repository:**
+### Installation
+
+1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/cyberpunk042/social-experiment-automation.git
+   git clone https://github.com/yourusername/social-experiment-automation.git
    cd social-experiment-automation
    ```
 
-2. **Install Poetry (if you don't have it already):**
+2. **Set Up a Virtual Environment with Poetry**
 
-   Poetry is a dependency management tool for Python. You can install it using the following command:
+   Ensure Poetry is installed. If not, install it via:
 
    ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
+   pip install poetry
    ```
 
-   Make sure to add Poetry to your system's PATH as instructed by the installer.
-
-3. **Install the dependencies:**
-
-   Once you have Poetry installed, run the following command to install the project dependencies:
+   Then, install the dependencies:
 
    ```bash
    poetry install
    ```
 
-4. **Activate the virtual environment:**
+3. **Set Up Environment Variables**
 
-   Poetry automatically creates and manages a virtual environment for your project. You can activate it using:
+   Create a `.env` file in the root directory with the following content:
 
-   ```bash
-   poetry shell
+   ```ini
+   instagram_api_key=your_instagram_api_key
+   instagram_access_token=your_instagram_access_token
+   openai_api_key=your_openai_api_key
    ```
 
-5. **Set up environment variables:**
+   Replace `your_instagram_api_key`, `your_instagram_access_token`, and `your_openai_api_key` with your actual credentials.
 
-   Create a `.env` file in the root directory and add the necessary environment variables:
+### Usage
 
-   ```
-   OPENAI_API_KEY=your_openai_api_key
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_KEY=your_supabase_key
-   INSTAGRAM_API_KEY=your_instagram_api_key
-   TWITTER_API_KEY=your_twitter_api_key
-   TWITTER_API_SECRET_KEY=your_twitter_api_secret_key
-   TWITTER_ACCESS_TOKEN=your_twitter_access_token
-   TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
-   SMTP_SERVER=your_smtp_server
-   SMTP_PORT=your_smtp_port
-   SMTP_USERNAME=your_smtp_username
-   SMTP_PASSWORD=your_smtp_password
-   ```
-
-## Usage
-
-### Running the Bot
-
-You can run the bot using the `main.py` script, which provides command-line options for different actions.
-
-#### Create a Post
-
-To create a new post on a social media platform:
+You can run the bot by invoking the `main.py` script and specifying the action you want to perform:
 
 ```bash
-python main.py create_post --platform [instagram|twitter] --content "Your post content"
+poetry run python main.py --action create_post --platform instagram
+poetry run python main.py --action comment_to_post --platform instagram
+poetry run python main.py --action reply_to_comments --platform instagram
 ```
 
-#### Reply to Comments
+The bot will use the credentials and configurations specified in the `.env` file to interact with Instagram.
 
-To reply to a specified number of comments on a social media platform:
+### Testing
+
+#### Unit Tests
+
+Unit tests are provided to validate individual components of the bot, such as content generation and API interactions. These tests use mocked data to simulate various scenarios.
+
+To run the unit tests:
 
 ```bash
-python main.py reply_to_comments --platform [instagram|twitter] --num_comments [number]
+poetry run python -m unittest discover -s tests
 ```
 
-> **Note:** All commands should be run within the Poetry shell. If you're not in the Poetry shell, prefix commands with `poetry run`, like so:
-> ```bash
-> poetry run python main.py create_post --platform instagram --content "Hello World!"
-> ```
+#### Integration Tests
 
-### Real-Time Updates
+Integration tests are provided to validate the full workflow of the bot using real API interactions with Instagram. These tests create real posts, comments, and replies on Instagram.
 
-The bot can also handle real-time updates by subscribing to events via Supabase. This functionality is managed in `real_time_updates.py` and is triggered automatically based on database changes.
+**Important:** Use a test Instagram account for integration tests to avoid cluttering your production account.
 
-### Notification Service
+To run the integration tests:
 
-The bot can send notifications via email. Both plain text and HTML formats are supported. This is managed by the `notification_service.py` and `smtp_client.py` modules.
+```bash
+poetry run python test_integration_social_bot.py
+```
 
-### Configuration
+### Directory Structure
 
-Configuration settings are managed via environment variables, which can be defined in a `.env` file. The `config_manager.py` module handles loading and validating these settings.
+```
+.
+├── bot
+│   ├── __init__.py
+│   ├── bot.py
+│   ├── config_manager.py
+│   ├── openai_client.py
+│   ├── response_generator.py
+│   ├── social_media
+│   │   ├── __init__.py
+│   │   ├── instagram_api.py
+│   │   └── twitter_api.py  # If applicable
+│   ├── user_preferences.py
+│   └── database_client.py
+├── tests
+│   ├── __init__.py
+│   ├── test_instagram_api_integration.py
+│   ├── test_openai_api_client.py
+│   ├── test_response_generator.py
+│   └── test_social_bot.py
+├── .env.example
+├── README.md
+├── requirements.txt
+├── pyproject.toml
+└── test_integration_social_bot.py
+```
 
-## Contributing
+### Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request if you'd like to contribute to this project.
+Contributions are welcome! Please fork the repository and submit a pull request for any improvements or fixes.
 
-## License
+### License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
