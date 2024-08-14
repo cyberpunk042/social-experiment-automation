@@ -108,7 +108,12 @@ def add_caption_from_file(database_client, file_path):
         captions = json.load(file)
         for caption_data in captions:
             result = database_client.add_caption(caption_data)
-            print(f"Caption added successfully with ID: {result['id']}")
+            
+            # Since result is a list, access the first element
+            if isinstance(result, list) and result:
+                print(f"Caption added successfully with ID: {result[0]['id']}")
+            else:
+                print("Failed to add caption or retrieve ID.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Social Experiment Automation Bot")

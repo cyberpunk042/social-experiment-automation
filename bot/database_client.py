@@ -1,12 +1,13 @@
 import logging
-import supabase
 import threading
+from supabase import create_client, Client
+from postgrest.exceptions import APIError
 from config_manager import ConfigManager
 
 class DatabaseClient:
     _instance = None
     _lock = threading.Lock()
-    
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             with cls._lock:
@@ -14,15 +15,7 @@ class DatabaseClient:
                     cls._instance = super(DatabaseClient, cls).__new__(cls)
         return cls._instance
 
-
     def __init__(self, config_manager: ConfigManager):
-        """
-        Initialize the DatabaseClient class.
-
-        This constructor initializes the Supabase client using configuration settings.
-
-        :param config_manager: An instance of ConfigManager to retrieve Supabase settings.
-        """
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
@@ -30,7 +23,7 @@ class DatabaseClient:
         self.supabase_key = config_manager.get("supabase_key")
 
         try:
-            self.client = supabase.create_client(self.supabase_url, self.supabase_key)
+            self.client: Client = create_client(self.supabase_url, self.supabase_key)
             self.logger.info("Supabase client initialized successfully.")
         except Exception as e:
             self.logger.error(f"Failed to initialize Supabase client: {e}")
@@ -38,53 +31,65 @@ class DatabaseClient:
 
         self._initialized = True
 
+    def check_table_exists(self, table_name):
+        """Check if the table exists by querying it, even if it has no entries."""
+        try:
+            response = self.client.table(table_name).select("*").limit(1).execute()
+
+            # Log the raw response for debugging purposes
+            self.logger.debug(f"Raw response from Supabase for table '{table_name}': {response}")
+
+            # Check if the response has data or is an empty list (which is valid if the table is empty)
+            if response.data is not None:
+                self.logger.info(f"Table '{table_name}' exists and is accessible.")
+                return True
+            else:
+                self.logger.warning(f"Table '{table_name}' might exist but is empty or cannot be accessed.")
+                return True  # Assume the table exists even if it has no data
+
+        except APIError as e:
+            self.logger.error(f"Error checking table existence: {e}")
+            return False
 
     def add_caption(self, caption_data):
-        """
-        Add a new caption to the Supabase database.
-
-        Args:
-            caption_data (dict): A dictionary representing the caption data.
-
-        Returns:
-            dict: The response from the database, including the inserted caption ID.
-        """
-        # Validate the caption schema
         self.validate_caption_schema(caption_data)
-        
-        # Insert the caption into the database
-        response = self.supabase.table('captions').insert(caption_data).execute()
-        
-        if response.status_code != 201:
-            raise Exception(f"Failed to add caption: {response.content}")
-        
-        return response.data
 
+        if not self.check_table_exists('captions'):
+            self.logger.error("Cannot add caption: 'captions' table does not exist.")
+            raise Exception("Table not found (404).")
+
+        try:
+            self.logger.debug(f"Attempting to insert caption data: {caption_data}")
+
+            response = self.client.table('captions').insert(caption_data).execute()
+
+            if response.data is None:
+                self.logger.error(f"Failed to insert caption data: {response}")
+                raise APIError("Failed to insert caption data")
+
+            return response.data
+
+        except APIError as api_err:
+            self.logger.error(f"Supabase API Error: {api_err}")
+            try:
+                self.logger.error(f"API Error response content: {api_err.args[0]}")
+            except AttributeError:
+                self.logger.error("API Error response content is not available.")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error: {str(e)}")
+            raise
+        
     def validate_caption_schema(self, caption_data):
-        """
-        Validate the schema of the provided caption data.
-
-        Args:
-            caption_data (dict): The caption data to validate.
-
-        Raises:
-            ValueError: If the caption data does not conform to the expected schema.
-        """
-        required_keys = {"text", "tags", "length", "category", "tone", "engagement"}
+        required_keys = {"caption_text", "tags", "length", "category", "tone"}
         if not required_keys.issubset(caption_data.keys()):
             missing_keys = required_keys - caption_data.keys()
             raise ValueError(f"Missing required keys in caption data: {missing_keys}")
         
     def get_user_preferences(self, user_id):
-        """
-        Retrieve user preferences from the database based on user_id.
-
-        :param user_id: The ID of the user whose preferences are being retrieved.
-        :return: A dictionary of user preferences or None if not found or an error occurs.
-        """
         try:
             response = self.client.from_("user_preferences").select("*").eq("user_id", user_id).execute()
-            if response.status_code == 200 and response.data:
+            if response.data:
                 self.logger.info(f"User preferences retrieved for user_id: {user_id}")
                 return response.data
             else:
@@ -95,56 +100,37 @@ class DatabaseClient:
             return None
 
     def update_user_preferences(self, user_id, preferences):
-        """
-        Update user preferences in the database.
-
-        :param user_id: The ID of the user whose preferences are being updated.
-        :param preferences: A dictionary of preferences to be updated.
-        """
         try:
             response = self.client.from_("user_preferences").upsert({"user_id": user_id, **preferences}).execute()
-            if response.status_code == 200:
+            if response.data:
                 self.logger.info(f"Preferences for user {user_id} updated successfully")
             else:
-                self.logger.error(f"Failed to update preferences for user {user_id}: {response.error_message}")
+                self.logger.error(f"Failed to update preferences for user {user_id}: {response}")
         except Exception as e:
             self.logger.error(f"Failed to update preferences for user {user_id}: {e}")
 
     def get_data(self, table_name, filters=None):
-        """
-        Retrieve data from a specific table in Supabase with optional filters.
-
-        :param table_name: The name of the table to retrieve data from.
-        :param filters: A dictionary of filters to apply to the query.
-        :return: The retrieved data or None if an error occurs.
-        """
         try:
             query = self.client.from_(table_name).select("*")
             if filters:
                 for column, value in filters.items():
                     query = query.eq(column, value)
             response = query.execute()
-            if response.status_code == 200:
+            if response.data:
                 self.logger.info(f"Data retrieved from {table_name} with filters {filters}")
                 return response.data
-            self.logger.error(f"Failed to retrieve data from {table_name}: {response.error_message}")
+            self.logger.error(f"Failed to retrieve data from {table_name}: {response}")
             return None
         except Exception as e:
             self.logger.error(f"Failed to retrieve data from {table_name}: {e}")
             return None
 
     def update_data(self, table_name, data):
-        """
-        Update data in a specific table in Supabase.
-
-        :param table_name: The name of the table to update data in.
-        :param data: A dictionary of data to upsert.
-        """
         try:
             response = self.client.from_(table_name).upsert(data).execute()
-            if response.status_code == 200:
+            if response.data:
                 self.logger.info(f"Data in {table_name} updated successfully")
             else:
-                self.logger.error(f"Failed to update data in {table_name}: {response.error_message}")
+                self.logger.error(f"Failed to update data in {table_name}: {response}")
         except Exception as e:
             self.logger.error(f"Failed to update data in {table_name}: {e}")
