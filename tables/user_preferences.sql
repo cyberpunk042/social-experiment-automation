@@ -2,7 +2,8 @@ CREATE TABLE user_preferences (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,  -- Assuming there is a user ID to link preferences to users
     notifications_enabled BOOLEAN DEFAULT TRUE,
-    response_style VARCHAR(20) DEFAULT 'friendly',
+    length VARCHAR(20) DEFAULT 'friendly',
+    response_style VARCHAR(20) DEFAULT 'short',
     content_tone VARCHAR(20) DEFAULT 'neutral',
     content_frequency VARCHAR(20) DEFAULT 'daily',
     notification_method VARCHAR(20) DEFAULT 'email',
