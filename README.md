@@ -58,9 +58,9 @@ This project automates interactions on social media platforms, particularly Inst
 You can run the bot by invoking the `main.py` script and specifying the action you want to perform:
 
 ```bash
-poetry run python main.py --action create_post --platform instagram
-poetry run python main.py --action comment_to_post --platform instagram
-poetry run python main.py --action reply_to_comments --platform instagram
+poetry run python bot/main.py --action create_post --platform instagram
+poetry run python bot/main.py --action comment_to_post --platform instagram
+poetry run python bot/main.py --action reply_to_comments --platform instagram
 ```
 
 The bot will use the credentials and configurations specified in the `.env` file to interact with Instagram.

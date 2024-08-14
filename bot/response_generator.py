@@ -24,43 +24,43 @@ class ResponseGenerator:
         self.user_preferences = user_preferences
         self.logger = logging.getLogger(__name__)
 
-def generate_caption(self):
-    """
-    Retrieve and personalize a caption from the database for a new Instagram post,
-    with support for configurable tone and style.
+    def generate_caption(self):
+        """
+        Retrieve and personalize a caption from the database for a new Instagram post,
+        with support for configurable tone and style.
 
-    Returns:
-        str: A retrieved and personalized caption.
+        Returns:
+            str: A retrieved and personalized caption.
 
-    Raises:
-        Exception: If no captions are found or there is an issue with the database.
-    """
-    try:
-        # Retrieve captions from the database
-        captions = self.database_client.get_table("captions")
-        if not captions:
-            raise Exception("No captions found in the database.")
+        Raises:
+            Exception: If no captions are found or there is an issue with the database.
+        """
+        try:
+            # Retrieve captions from the database
+            captions = self.database_client.get_table("captions")
+            if not captions:
+                raise Exception("No captions found in the database.")
 
-        # Select a base caption based on user preferences
-        caption = self.user_preferences.select_preferred_caption(captions)
-        response_style = self.user_preferences.response_style
-        content_tone = self.user_preferences.content_tone
-        
-        # Augmented tone directive: includes a spectrum of tones from reserved to vulgar, etc.
-        tone_directive = self.user_preferences.get_tone_directive()
-        
-        # Construct the prompt for OpenAI with the specified style, tone, and additional directives
-        prompt = (
-            f"Generate a caption in a {response_style} style with a {content_tone} tone "
-            f"and with a directive towards being {tone_directive}: '{caption}'"
-        )
-        
-        # Use OpenAI to generate the personalized caption
-        personalized_caption = self.openai_client.complete(prompt)
-        return personalized_caption
+            # Select a base caption based on user preferences
+            caption = self.user_preferences.select_preferred_caption(captions)
+            response_style = self.user_preferences.response_style
+            content_tone = self.user_preferences.content_tone
+            
+            # Augmented tone directive: includes a spectrum of tones from reserved to vulgar, etc.
+            tone_directive = self.user_preferences.get_tone_directive()
+            
+            # Construct the prompt for OpenAI with the specified style, tone, and additional directives
+            prompt = (
+                f"Generate a caption in a {response_style} style with a {content_tone} tone "
+                f"and with a directive towards being {tone_directive}: '{caption}'"
+            )
+            
+            # Use OpenAI to generate the personalized caption
+            personalized_caption = self.openai_client.complete(prompt)
+            return personalized_caption
 
-    except Exception as e:
-        raise Exception(f"Error retrieving or personalizing caption: {e}")
+        except Exception as e:
+            raise Exception(f"Error retrieving or personalizing caption: {e}")
 
     def generate_image(self, caption):
         """
