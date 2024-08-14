@@ -76,6 +76,10 @@ class UserPreferences:
         audience = self.audience  # Additional audience targeting
         language = self.language  # Multi-language support
 
+        # Log the current preferences for debugging
+        self.logger.debug(f"Selecting caption with preferences: tags={preferred_tags}, length={preferred_length}, "
+                        f"category={preferred_category}, tone={preferred_tone}, audience={audience}, language={language}")
+
         # Filter captions based on user preferences
         filtered_captions = [
             caption for caption in captions
@@ -88,6 +92,7 @@ class UserPreferences:
         ]
 
         if not filtered_captions:
+            self.logger.error("No suitable captions found based on the given preferences.")
             raise ValueError("No suitable captions found based on the given preferences.")
 
         # Rank captions by engagement or other metrics
@@ -101,9 +106,12 @@ class UserPreferences:
         selected_caption = ranked_captions[0]['text'] if ranked_captions else None
 
         if not selected_caption:
+            self.logger.error("No suitable captions found after filtering and ranking.")
             raise ValueError("No suitable captions found after filtering and ranking.")
 
+        self.logger.info(f"Selected caption: {selected_caption}")
         return selected_caption
+
 
     def load_preferences(self):
         """

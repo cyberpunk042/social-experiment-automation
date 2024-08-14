@@ -80,6 +80,29 @@ class DatabaseClient:
             self.logger.error(f"Unexpected error: {str(e)}")
             raise
         
+    def check_and_populate_captions(self):
+        """
+        Check if captions exist in the database and populate them if necessary.
+        """
+        captions = self.client.from_("captions").select("*").limit(1).execute()
+        if not captions.data:
+            self.logger.info("No captions found in the database. Populating default captions.")
+            # Populate with some default captions
+            default_captions = [
+                {
+                    "text": "The future belongs to those who believe in the beauty of their dreams.",
+                    "tags": ["motivation", "inspiration"],
+                    "length": "short",
+                    "category": "motivational",
+                    "tone": "positive",
+                    "likes": 10, 
+                    "shares": 2, 
+                    "comments": 1
+                },
+                # Add more captions as necessary
+            ]
+            self.client.from_("captions").insert(default_captions).execute()
+
     def validate_caption_schema(self, caption_data):
         required_keys = {"caption_text", "tags", "length", "category", "tone"}
         if not required_keys.issubset(caption_data.keys()):
