@@ -1,5 +1,6 @@
 import argparse
 import json
+from user_preferences import UserPreferences
 from config_manager import ConfigManager
 from database_client import DatabaseClient
 from bot import SocialBot
@@ -123,7 +124,8 @@ if __name__ == "__main__":
     # Initialize the necessary components
     config_manager = ConfigManager()
     database_client = DatabaseClient(config_manager)
-    bot = SocialBot(config_manager)
+    user_preferences = UserPreferences(config_manager, database_client)
+    bot = SocialBot(config_manager, database_client, user_preferences)
 
     if args.action == "create_post":
         if not args.platform:

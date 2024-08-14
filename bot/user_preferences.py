@@ -7,10 +7,10 @@ class UserPreferences:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(UserPreferences, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(UserPreferences, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: ConfigManager, database_client: DatabaseClient):
         """
         Initialize the UserPreferences class.
 
@@ -23,7 +23,7 @@ class UserPreferences:
             return
         self.logger = logging.getLogger(__name__)
         self.config_manager = config_manager
-        self.db_client = DatabaseClient(config_manager)
+        self.db_client = database_client
         self.preferences = {}
         self._initialized = True
         self.tone = 'reserved'  # Default tone
