@@ -12,56 +12,53 @@ class OpenAIClient:
         :param config_manager: An instance of ConfigManager to retrieve configuration settings.
         """
         self.api_key = config_manager.get("openai_api_key")
-        openai.api_key = self.api_key
-        self.engine = config_manager.get("openai_engine", "davinci")
+        self.client = openai.OpenAI(api_key=self.api_key)
+        self.model = config_manager.get("openai_engine", "gpt-3.5-turbo")
         self.logger = logging.getLogger(__name__)
-        self.logger.info("OpenAIClient initialized with provided API key and engine.")
+        self.logger.info("OpenAIClient initialized with provided API key and model.")
 
-    def complete(self, prompt, max_tokens=150, temperature=0.7, n=1, retries=3, timeout=10):
+    def complete(self, prompt, max_tokens=150, temperature=0.7, retries=3, timeout=10):
         """
         Generate a completion for the given prompt using the OpenAI API.
 
         :param prompt: The text prompt to generate a response for.
         :param max_tokens: The maximum number of tokens in the generated response.
         :param temperature: The sampling temperature to use, higher values mean more random completions.
-        :param n: The number of completions to generate.
         :param retries: The number of times to retry the request in case of a transient error.
         :param timeout: Timeout in seconds for the API call.
         :return: The generated text completion.
         :raises Exception: If the completion fails after all retries.
         """
-        # Parameter validation
-        if not 1 <= max_tokens <= 2048:
-            raise ValueError("max_tokens must be between 1 and 2048.")
-        if not 0.0 <= temperature <= 1.0:
-            raise ValueError("temperature must be between 0.0 and 1.0.")
-        
         self.logger.info(f"Generating completion for prompt: {prompt[:50]}...")
 
         # Retry logic
         for attempt in range(retries):
             try:
-                response = openai.Completion.create(
-                    engine=self.engine,
-                    prompt=prompt,
+                response = self.client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=self.model,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    n=n,
                     timeout=timeout
                 )
                 self.logger.info("Completion generated successfully.")
-                return response.choices[0].text.strip()
+                return response.choices[0].message["content"].strip()
 
             except (Timeout, RequestException) as e:
                 self.logger.warning(f"Request failed with error: {e}. Retrying {retries - attempt - 1} more times...")
                 sleep(2)  # Backoff before retrying
 
-            except openai.error.RateLimitError as e:
-                self.logger.error("Rate limit exceeded. Pausing before retrying...")
-                sleep(60)  # Wait for a minute before retrying
+            except openai.APIConnectionError as e:
+                self.logger.error("Failed to connect to the OpenAI API.")
+                sleep(60)  # Wait before retrying
                 continue
 
-            except openai.error.OpenAIError as e:
+            except openai.RateLimitError as e:
+                self.logger.error("Rate limit exceeded. Pausing before retrying...")
+                sleep(60)  # Wait before retrying
+                continue
+
+            except openai.APIError as e:
                 self.logger.error(f"OpenAI API error: {e}.")
                 raise
 
@@ -85,25 +82,30 @@ class OpenAIClient:
 
         for attempt in range(retries):
             try:
-                response = openai.Image.create(
+                response = self.client.images.create(
                     prompt=prompt,
                     n=n,
                     size=size,
                     timeout=timeout
                 )
                 self.logger.info("Image generated successfully.")
-                return response['data'][0]['url']
+                return response.data[0].url
 
             except (Timeout, RequestException) as e:
                 self.logger.warning(f"Request failed with error: {e}. Retrying {retries - attempt - 1} more times...")
                 sleep(2)
 
-            except openai.error.RateLimitError as e:
+            except openai.APIConnectionError as e:
+                self.logger.error("Failed to connect to the OpenAI API.")
+                sleep(60)
+                continue
+
+            except openai.RateLimitError as e:
                 self.logger.error("Rate limit exceeded. Pausing before retrying...")
                 sleep(60)
                 continue
 
-            except openai.error.OpenAIError as e:
+            except openai.APIError as e:
                 self.logger.error(f"OpenAI API error: {e}.")
                 raise
 
