@@ -110,22 +110,55 @@ class DatabaseClient:
             self.logger.error(f"Failed to update preferences for user {user_id}: {e}")
 
     def get_data(self, table_name, filters=None):
+        """
+        Retrieve data from a specific table in Supabase with optional filters.
+
+        :param table_name: The name of the table to retrieve data from.
+        :param filters: A dictionary of filters to apply to the query. If None, all data is retrieved.
+        :return: A list of rows (each row is a dictionary) from the specified table.
+        """
         try:
             query = self.client.from_(table_name).select("*")
             if filters:
                 for column, value in filters.items():
                     query = query.eq(column, value)
             response = query.execute()
+            
             if response.data:
                 self.logger.info(f"Data retrieved from {table_name} with filters {filters}")
                 return response.data
-            self.logger.error(f"Failed to retrieve data from {table_name}: {response}")
-            return None
-        except Exception as e:
-            self.logger.error(f"Failed to retrieve data from {table_name}: {e}")
-            return None
+            else:
+                self.logger.warning(f"No data found in table '{table_name}'.")
+                return []
 
+        except APIError as e:
+            self.logger.error(f"Error retrieving data from table '{table_name}': {e}")
+            return []
+
+    def add_data(self, table_name, data):
+        """
+        Insert data into a specified table.
+
+        :param table_name: The name of the table to insert data into.
+        :param data: A dictionary of data to insert.
+        :return: The inserted data with any generated fields (e.g., ID) or an empty list if the insert fails.
+        """
+        try:
+            response = self.client.from_(table_name).insert(data).execute()
+
+            if response.data:
+                self.logger.info(f"Data inserted successfully into '{table_name}'.")
+                return response.data
+            else:
+                self.logger.error(f"Failed to insert data into '{table_name}'.")
+                return []
+
+        except APIError as e:
+            self.logger.error(f"Error inserting data into '{table_name}': {e}")
+            return []
+        
     def update_data(self, table_name, data):
+        """Update data in a specific table in Supabase."""
         try:
             response = self.client.from_(table_name).upsert(data).execute()
             if response.data:

@@ -37,7 +37,7 @@ class ResponseGenerator:
         """
         try:
             # Retrieve captions from the database
-            captions = self.database_client.get_table("captions")
+            captions = self.database_client.get_data("captions")
             if not captions:
                 raise Exception("No captions found in the database.")
 

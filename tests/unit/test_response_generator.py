@@ -25,7 +25,7 @@ class TestResponseGenerator(unittest.TestCase):
     def test_generate_caption_success(self):
         """Test successful caption generation with valid data."""
         # Mocking database response and user preferences
-        self.mock_database_client.get_table.return_value = ["Sample caption"]
+        self.mock_database_client.get_data.return_value = ["Sample caption"]
         self.mock_user_preferences.select_preferred_caption.return_value = "Sample caption"
         self.mock_user_preferences.response_style = "informal"
         self.mock_user_preferences.content_tone = "friendly"
@@ -38,7 +38,7 @@ class TestResponseGenerator(unittest.TestCase):
     def test_generate_caption_no_captions(self):
         """Test handling when no captions are found in the database."""
         # Simulating a situation where no captions are available
-        self.mock_database_client.get_table.return_value = []
+        self.mock_database_client.get_data.return_value = []
 
         with self.assertRaises(Exception) as context:
             self.response_generator.generate_caption()
@@ -47,7 +47,7 @@ class TestResponseGenerator(unittest.TestCase):
 
     def test_generate_caption_empty_database_response(self):
         """Test handling of an empty response from the database."""
-        self.mock_database_client.get_table.return_value = []
+        self.mock_database_client.get_data.return_value = []
 
         with self.assertRaises(Exception) as context:
             self.response_generator.generate_caption()
@@ -56,7 +56,7 @@ class TestResponseGenerator(unittest.TestCase):
 
     def test_generate_caption_missing_user_preferences(self):
         """Test handling when user preferences are not set."""
-        self.mock_database_client.get_table.return_value = ["Sample caption"]
+        self.mock_database_client.get_data.return_value = ["Sample caption"]
         self.mock_user_preferences.select_preferred_caption.return_value = "Sample caption"
         self.mock_user_preferences.response_style = None  # Missing preferences
         self.mock_user_preferences.content_tone = None
