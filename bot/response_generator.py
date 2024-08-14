@@ -7,6 +7,7 @@ class ResponseGenerator:
     """
     ResponseGenerator is responsible for generating content such as captions, images,
     comments, and replies. It interacts with the database to retrieve captions,
+    uses OpenAI for text generation, and considers user preferences for personalized content.
     uses DALL-E for image generation, and considers user preferences for personalized content.
     """
 
@@ -39,32 +40,37 @@ class ResponseGenerator:
             # Retrieve captions from the database
             captions = self.database_client.get_data("captions")
             if not captions:
+                self.logger.error("No captions found in the database.")
                 raise Exception("No captions found in the database.")
 
             # Select a base caption based on user preferences
-            caption = self.user_preferences.select_preferred_caption(captions)
+            try:
+                caption = self.user_preferences.select_preferred_caption(captions)
+            except ValueError as e:
+                self.logger.error(f"No suitable captions found: {e}")
+                raise Exception("Error retrieving or personalizing caption: No suitable captions found.")
+            
+            # Retrieve user preferences for response style and tone
             response_style = self.user_preferences.response_style
             content_tone = self.user_preferences.content_tone
-            
-            # Augmented tone directive: includes a spectrum of tones from reserved to vulgar, etc.
-            tone_directive = self.user_preferences.get_tone_directive()
-            
+
             # Construct the prompt for OpenAI with the specified style, tone, and additional directives
             prompt = (
-                f"Generate a caption in a {response_style} style with a {content_tone} tone "
-                f"and with a directive towards being {tone_directive}: '{caption}'"
+                f"Generate a caption in a {response_style} style with a {content_tone} tone: '{caption}'"
             )
             
             # Use OpenAI to generate the personalized caption
             personalized_caption = self.openai_client.complete(prompt)
+            self.logger.info(f"Generated caption: {personalized_caption}")
             return personalized_caption
 
         except Exception as e:
+            self.logger.error(f"Error in generating caption: {e}")
             raise Exception(f"Error retrieving or personalizing caption: {e}")
 
     def generate_image(self, caption):
         """
-        Generate an image based on the provided caption using DALL-E.
+        Generate an image based on the provided caption using OpenAI's image generation capabilities.
 
         Args:
             caption (str): The caption to inspire the image generation.
@@ -76,11 +82,13 @@ class ResponseGenerator:
             Exception: If the image generation fails.
         """
         try:
-            preferences = self.user_preferences.get_image_preferences()
+            preferences = self.user_preferences.get_preferences()  # Ensuring consistency in accessing preferences
             modified_caption = f"{caption} with elements such as {preferences['style']} style, {preferences['color_scheme']} color scheme."
             image_url = self.openai_client.generate_image(modified_caption)
+            self.logger.info(f"Generated image URL: {image_url}")
             return image_url
         except Exception as e:
+            self.logger.error(f"Error in generating image: {e}")
             raise Exception(f"Image generation failed: {e}")
 
     async def generate_personalized_comment(self, context=None):
@@ -103,8 +111,10 @@ class ResponseGenerator:
             
             prompt = f"Generate a comment in a {response_style} style with a {content_tone} tone that aligns with {interaction_type} interactions. Context: {context}"
             personalized_comment = await self.openai_client.complete(prompt)
+            self.logger.info(f"Generated personalized comment: {personalized_comment}")
             return personalized_comment
         except Exception as e:
+            self.logger.error(f"Error in generating personalized comment: {e}")
             raise Exception(f"Error generating personalized comment: {e}")
 
     async def generate_personalized_reply(self, context=None):
@@ -127,8 +137,10 @@ class ResponseGenerator:
             
             prompt = f"Generate a reply in a {response_style} style with a {content_tone} tone that aligns with {interaction_type} interactions. Context: {context}"
             personalized_reply = await self.openai_client.complete(prompt)
+            self.logger.info(f"Generated personalized reply: {personalized_reply}")
             return personalized_reply
         except Exception as e:
+            self.logger.error(f"Error in generating personalized reply: {e}")
             raise Exception(f"Error generating personalized reply: {e}")
 
     async def generate_all_content_for_post(self, context=None):
@@ -150,6 +162,7 @@ class ResponseGenerator:
             comment = await self.generate_personalized_comment(context)
             reply = await self.generate_personalized_reply(context)
 
+            self.logger.info("Successfully generated all content for the post.")
             return {
                 "caption": caption,
                 "image_url": image_url,
@@ -157,4 +170,5 @@ class ResponseGenerator:
                 "reply": reply
             }
         except Exception as e:
+            self.logger.error(f"Error generating content for post: {e}")
             raise Exception(f"Error generating content for post: {e}")

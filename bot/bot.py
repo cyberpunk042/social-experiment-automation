@@ -1,4 +1,5 @@
 import logging
+from openai_client import OpenAIClient
 from user_preferences import UserPreferences
 from database_client import DatabaseClient
 from social_media.instagram_api import InstagramIntegration
@@ -13,7 +14,7 @@ class SocialBot:
     and managing followers across different platforms like Instagram and Twitter.
     """
 
-    def __init__(self, config_manager: ConfigManager, database_client: DatabaseClient, user_preferences: UserPreferences, interactive=False):
+    def __init__(self, config_manager: ConfigManager, openai_client: OpenAIClient, database_client: DatabaseClient, user_preferences: UserPreferences, interactive=False):
         """
         Initialize the SocialBot with configuration and set up platform integrations.
 
@@ -27,7 +28,7 @@ class SocialBot:
             "instagram": InstagramIntegration(config_manager),
             "twitter": TwitterIntegration(config_manager)
         }
-        self.response_generator = ResponseGenerator(config_manager, database_client, user_preferences)
+        self.response_generator = ResponseGenerator(openai_client, database_client, user_preferences)
         self.logger.info("SocialBot initialized with integrations for Instagram and Twitter.")
 
     def post_image(self, platform, caption=None):

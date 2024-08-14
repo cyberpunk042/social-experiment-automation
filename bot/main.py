@@ -1,5 +1,6 @@
 import argparse
 import json
+from openai_client import OpenAIClient
 from user_preferences import UserPreferences
 from config_manager import ConfigManager
 from database_client import DatabaseClient
@@ -129,8 +130,9 @@ if __name__ == "__main__":
     # Initialize the necessary components
     config_manager = ConfigManager()
     database_client = DatabaseClient(config_manager)
+    openai_client = OpenAIClient(config_manager)
     user_preferences = UserPreferences(config_manager, database_client, 1)
-    bot = SocialBot(config_manager, database_client, user_preferences)
+    bot = SocialBot(config_manager, openai_client, database_client, user_preferences)
 
     if args.action == "create_post":
         if not args.platform:
