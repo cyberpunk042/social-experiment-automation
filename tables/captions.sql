@@ -1,13 +1,12 @@
 CREATE TABLE captions (
-    id SERIAL PRIMARY KEY,
-    text TEXT NOT NULL,
-    tags TEXT[],  -- Assuming tags are stored as an array of strings
-    length VARCHAR(20),  -- Short, Medium, Long
-    category VARCHAR(50),
-    tone VARCHAR(20),
-    audience VARCHAR(50) DEFAULT 'general',
-    language VARCHAR(10) DEFAULT 'en',
-    engagement JSONB DEFAULT '{}',  -- Assuming engagement is stored as a JSON object
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id serial PRIMARY KEY,
+    caption_text text NOT NULL,
+    tags text,
+    length text,
+    category text,
+    tone text,
+    likes integer DEFAULT 0,
+    shares integer DEFAULT 0,
+    comments integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT current_timestamp
 );
