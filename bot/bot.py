@@ -1,162 +1,223 @@
 import logging
-import asyncio
-import random
-from bot.openai_client import OpenAIClient
-from bot.user_preferences import UserPreferences
-from bot.social_media.instagram_api import InstagramIntegration
-from bot.social_media.twitter import TwitterIntegration
-from bot.config_manager import ConfigManager
-from bot.response_generator import ResponseGenerator
+from bot.social_media.instagram_integration import InstagramIntegration
+from bot.response_generator import ResponseGenerator  # Assuming this is where ResponseGenerator is implemented
 
-class Bot:
-    def __init__(self, interactive=False):
+class InstagramBot:
+    """
+    InstagramBot provides a high-level interface for interacting with Instagram using the
+    InstagramIntegration API and ResponseGenerator. It supports operations such as generating and
+    posting images, posting comments, replying to comments, following users, and more.
+
+    Attributes:
+        instagram_api (InstagramIntegration): The Instagram API integration instance.
+        response_generator (ResponseGenerator): Instance for generating responses and content.
+        interactive (bool): Determines if actions require confirmation.
+    """
+
+    def __init__(self, config_manager, interactive=False):
         """
-        Initialize the Bot class, setting up integrations and services.
-
-        This constructor sets up the necessary integrations and services required
-        for the bot to function, including the option for interactive mode.
-        """
-        self.config = ConfigManager().load_config()
-        self.openai_client = OpenAIClient(self.config["openai_api_key"])
-        self.user_preferences = UserPreferences()
-        self.instagram = InstagramIntegration(self.config["instagram"])
-        self.twitter = TwitterIntegration(self.config["twitter"])
-        self.response_generator = ResponseGenerator(self.openai_client)
-        self.interactive = interactive  # Set the interactive mode
-
-    def confirm_action(self, action_description):
-        if not self.interactive:
-            return True
-        confirmation = input(f"Do you want to proceed with the following action: {action_description}? (yes/no): ")
-        return confirmation.lower() in ['yes', 'y']
-
-    async def create_post(self, platform):
-        """
-        Create a new post on the specified social media platform.
+        Initialize the InstagramBot with the configuration manager and setup API integrations.
 
         Args:
-            platform (str): The social media platform to post on.
+            config_manager (ConfigManager): The configuration manager for retrieving settings.
+            interactive (bool): If True, actions will require user confirmation.
         """
-        if platform == 'twitter':
-            if self.confirm_action("creating a post on Twitter"):
-                await self.twitter.create_post("This is a test post.")
-        elif platform == 'instagram':
-            if self.confirm_action("creating a post on Instagram"):
-                await self.instagram.create_post("This is a test post.")
+        self.logger = logging.getLogger(__name__)
+        self.instagram_api = InstagramIntegration(config_manager)
+        self.response_generator = ResponseGenerator()
+        self.interactive = interactive
+        self.logger.info("InstagramBot initialized.")
 
-    async def reply_to_comments(self, platform):
+    def get_posts_by_hashtag(self, hashtag, retries=3, backoff_factor=0.3):
         """
-        Reply to comments on the specified social media platform.
-
-        Args:
-            platform (str): The social media platform to reply on.
-        """
-        if platform == 'twitter':
-            if self.confirm_action("replying to comments on Twitter"):
-                await self.twitter.reply_to_comments()
-        elif platform == 'instagram':
-            if self.confirm_action("replying to comments on Instagram"):
-                await self.instagram.reply_to_comments()
-
-    async def like_posts(self, platform):
-        """
-        Like posts on the specified social media platform.
+        Retrieve posts associated with a specific hashtag.
 
         Args:
-            platform (str): The social media platform where posts will be liked.
-        """
-        if platform == 'twitter':
-            if self.confirm_action("liking posts on Twitter"):
-                await self.twitter.like_posts()
-        elif platform == 'instagram':
-            if self.confirm_action("liking posts on Instagram"):
-                await self.instagram.like_posts()
-
-    async def follow_users(self, platform):
-        """
-        Follow users on the specified social media platform.
-
-        Args:
-            platform (str): The social media platform where users will be followed.
-        """
-        if platform == 'twitter':
-            if self.confirm_action("following users on Twitter"):
-                await self.twitter.follow_users()
-        elif platform == 'instagram':
-            if self.confirm_action("following users on Instagram"):
-                await self.instagram.follow_users()
-
-    async def unfollow_users(self, platform):
-        """
-        Unfollow users on the specified social media platform.
-
-        Args:
-            platform (str): The social media platform where users will be unfollowed.
-        """
-        if platform == 'twitter':
-            if self.confirm_action("unfollowing users on Twitter"):
-                await self.twitter.unfollow_users()
-        elif platform == 'instagram':
-            if self.confirm_action("unfollowing users on Instagram"):
-                await self.instagram.unfollow_users()
-
-    async def _generate_content_with_retries(self, max_retries=3):
-        """
-        Generate content using the response generator with retry logic.
-
-        Args:
-            max_retries (int): The maximum number of retries allowed in case of failure.
+            hashtag (str): The hashtag to search for posts.
+            retries (int): Number of retries in case of failures.
+            backoff_factor (float): Factor for increasing delay between retries.
 
         Returns:
-            str: The generated content or an error message if all retries fail.
-        """
-        for attempt in range(max_retries):
-            try:
-                content = await self.response_generator.generate_response()
-                return content
-            except Exception as e:
-                logging.error(f"Attempt {attempt + 1} failed: {e}")
-        return "Failed to generate content after multiple attempts."
+            list: A list of posts associated with the hashtag.
 
-    async def _post_content_with_retries(self, platform, content, max_retries=3):
+        Raises:
+            Exception: If there is an error in retrieving posts.
         """
-        Post content to a social media platform with retry logic.
+        try:
+            posts = self.instagram_api.get_posts(hashtag, retries, backoff_factor)
+            self.logger.info(f"Retrieved posts for hashtag: {hashtag}")
+            return posts
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve posts for hashtag {hashtag}: {e}")
+            raise
 
-        Args:
-            platform (str): The social media platform where content will be posted.
-            content (str): The content to post.
-            max_retries (int): The maximum number of retries allowed in case of failure.
+    def create_post(self, caption=None):
         """
-        for attempt in range(max_retries):
-            try:
-                if platform == 'twitter':
-                    if self.confirm_action(f"posting content to Twitter: {content}"):
-                        await self.twitter.create_post(content)
-                        return
-                elif platform == 'instagram':
-                    if self.confirm_action(f"posting content to Instagram: {content}"):
-                        await self.instagram.create_post(content)
-                        return
-            except Exception as e:
-                logging.error(f"Attempt {attempt + 1} failed: {e}")
-        logging.error("Failed to post content after multiple attempts.")
-
-    async def run(self, platform, action):
-        """
-        Execute the bot's action with proper content generation and posting.
+        Generate an image based on the provided or generated caption and create a new post on Instagram.
 
         Args:
-            platform (str): The social media platform to interact with.
-            action (str): The action to perform (e.g., 'create_post').
+            caption (str): Optional caption for the post. If not provided, it will be generated.
+
+        Returns:
+            dict: The result of the post operation.
+
+        Raises:
+            Exception: If there is an error in creating the post.
         """
-        if action == 'create_post':
-            content = await self._generate_content_with_retries()
-            await self._post_content_with_retries(platform, content)
-        elif action == 'reply_to_comments':
-            await self.reply_to_comments(platform)
-        elif action == 'like_posts':
-            await self.like_posts(platform)
-        elif action == 'follow_users':
-            await self.follow_users(platform)
-        elif action == 'unfollow_users':
-            await self.unfollow_users(platform)
+        try:
+            if not caption:
+                caption = self.response_generator.generate_caption()
+
+            # Generate the image based on the caption
+            image_path = self.response_generator.generate_image(caption)
+
+            if self.interactive:
+                action_description = f"Creating a new post with generated image {image_path} and caption '{caption}'."
+                if not self.confirm_action(action_description):
+                    self.logger.info("Post creation canceled by user.")
+                    return {"status": "canceled", "reason": "User canceled the action."}
+
+            # Post the image with the generated caption
+            result = self.instagram_api.post_image(image_path, caption)
+            self.logger.info(f"Created a new post with caption: {caption}")
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to create post: {e}")
+            raise
+
+    def post_comment_on_post(self, media_id, context=None):
+        """
+        Post a comment on a specific Instagram post, generating the comment using context.
+
+        Args:
+            media_id (str): The ID of the media (post) to comment on.
+            context (str): Context to generate the comment. If not provided, it will be auto-generated.
+
+        Returns:
+            dict: The result of the comment operation.
+
+        Raises:
+            Exception: If there is an error in posting the comment.
+        """
+        try:
+            comment_text = self.response_generator.generate_comment(context)
+            
+            if self.interactive:
+                action_description = f"Posting comment on media ID {media_id}: '{comment_text}'."
+                if not self.confirm_action(action_description):
+                    self.logger.info("Comment posting canceled by user.")
+                    return {"status": "canceled", "reason": "User canceled the action."}
+            
+            result = self.instagram_api.post_comment(media_id, comment_text)
+            self.logger.info(f"Posted comment on media ID {media_id}.")
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to post comment on media ID {media_id}: {e}")
+            raise
+
+    def reply_to_comment_on_post(self, comment_id, context=None):
+        """
+        Reply to a comment on a specific Instagram post, generating the reply using context.
+
+        Args:
+            comment_id (str): The ID of the comment to reply to.
+            context (str): Context to generate the reply. If not provided, it will be auto-generated.
+
+        Returns:
+            dict: The result of the reply operation.
+
+        Raises:
+            Exception: If there is an error in replying to the comment.
+        """
+        try:
+            reply_text = self.response_generator.generate_reply(context)
+            
+            if self.interactive:
+                action_description = f"Replying to comment ID {comment_id} with: '{reply_text}'."
+                if not self.confirm_action(action_description):
+                    self.logger.info("Reply action canceled by user.")
+                    return {"status": "canceled", "reason": "User canceled the action."}
+            
+            result = self.instagram_api.reply_to_comment(comment_id, reply_text)
+            self.logger.info(f"Replied to comment ID {comment_id}.")
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to reply to comment ID {comment_id}: {e}")
+            raise
+
+    def follow_users_by_tags(self, tags, amount=10):
+        """
+        Follow users based on specified tags.
+
+        Args:
+            tags (list): List of tags to use for finding users to follow.
+            amount (int): Number of users to follow.
+
+        Returns:
+            dict: The result of the follow operation.
+
+        Raises:
+            Exception: If there is an error in following users.
+        """
+        try:
+            if self.interactive:
+                action_description = f"Following {amount} users based on tags: {tags}."
+                if not self.confirm_action(action_description):
+                    self.logger.info("Follow action canceled by user.")
+                    return {"status": "canceled", "reason": "User canceled the action."}
+            
+            result = self.instagram_api.follow_users(amount=amount, tags=tags)
+            self.logger.info(f"Followed users by tags: {tags}.")
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to follow users by tags {tags}: {e}")
+            raise
+
+    def unfollow_users(self, amount=10):
+        """
+        Unfollow a specified number of users.
+
+        Args:
+            amount (int): Number of users to unfollow.
+
+        Returns:
+            dict: The result of the unfollow operation.
+
+        Raises:
+            Exception: If there is an error in unfollowing users.
+        """
+        try:
+            if self.interactive:
+                action_description = f"Unfollowing {amount} users."
+                if not self.confirm_action(action_description):
+                    self.logger.info("Unfollow action canceled by user.")
+                    return {"status": "canceled", "reason": "User canceled the action."}
+            
+            result = self.instagram_api.unfollow_users(amount=amount)
+            self.logger.info(f"Unfollowed {amount} users.")
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to unfollow users: {e}")
+            raise
+
+    def confirm_action(self, action_description):
+        """
+        Confirm an action before proceeding.
+
+        Args:
+            action_description (str): Description of the action to confirm.
+
+        Returns:
+            bool: True if the action is confirmed, False otherwise.
+        """
+        try:
+            confirmation = input(f"Please confirm the following action: {action_description} (yes/no): ")
+            if confirmation.lower() in ['yes', 'y']:
+                self.logger.info(f"Action confirmed: {action_description}")
+                return True
+            else:
+                self.logger.info(f"Action not confirmed: {action_description}")
+                return False
+        except Exception as e:
+            self.logger.error(f"Failed to confirm action {action_description}: {e}")
+            raise

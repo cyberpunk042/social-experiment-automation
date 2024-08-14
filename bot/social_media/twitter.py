@@ -1,5 +1,6 @@
 import requests
 import logging
+import time
 from requests_oauthlib import OAuth1
 from bot.config_manager import ConfigManager
 
@@ -32,46 +33,69 @@ class TwitterIntegration:
         session.auth = auth
         return session
 
-    def get_tweets(self, hashtag):
+    def get_tweets(self, hashtag, retries=3, backoff_factor=0.3):
         """
-        Retrieve tweets associated with a specific hashtag.
+        Retrieve tweets associated with a specific hashtag with retry logic.
 
         :param hashtag: The hashtag to search for tweets.
+        :param retries: Number of retries in case of failures.
+        :param backoff_factor: Factor for increasing delay between retries.
         :return: A list of tweets associated with the hashtag.
         """
         url = f"{self.BASE_URL}/search/tweets.json"
         params = {'q': f'#{hashtag}', 'count': 100}
         self.logger.info(f"Fetching tweets for hashtag: {hashtag}")
-        try:
-            response = self.session.get(url, params=params)
-            response.raise_for_status()
-            tweets = response.json().get('statuses', [])
-            self.logger.info(f"Retrieved {len(tweets)} tweets for hashtag: {hashtag}")
-            return tweets
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error fetching tweets for hashtag {hashtag}: {e}")
-            return []
-        except Exception as e:
-            self.logger.error(f"Unexpected error during tweet retrieval for hashtag {hashtag}: {e}")
-            return []
+        attempt = 0
+        while attempt < retries:
+            try:
+                response = self.session.get(url, params=params)
+                response.raise_for_status()
+                tweets = response.json().get('statuses', [])
+                self.logger.info(f"Retrieved {len(tweets)} tweets for hashtag: {hashtag}")
+                return tweets
+            except requests.exceptions.RequestException as e:
+                if response.status_code == 429:  # Rate limit error
+                    self.logger.warning(f"Rate limit exceeded. Retrying after delay. Attempt {attempt + 1}")
+                    time.sleep(2 ** attempt * backoff_factor)
+                else:
+                    self.logger.error(f"Error fetching tweets for hashtag {hashtag}: {e}")
+                    time.sleep(2 ** attempt * backoff_factor)
+            except Exception as e:
+                self.logger.error(f"Unexpected error during tweet retrieval for hashtag {hashtag}: {e}")
+                time.sleep(2 ** attempt * backoff_factor)
+            attempt += 1
+        self.logger.error(f"Failed to retrieve tweets for hashtag {hashtag} after {retries} attempts.")
+        return []
 
-    def post_tweet(self, tweet_text):
+    def post_tweet(self, tweet_text, retries=3, backoff_factor=0.3):
         """
-        Post a tweet to the authenticated user's timeline.
+        Post a tweet to the authenticated user's timeline with retry logic.
 
         :param tweet_text: The text of the tweet to post.
-        :return: The result of the tweet post operation.
+        :param retries: Number of retries in case of failures.
+        :param backoff_factor: Factor for increasing delay between retries.
+        :return: The result of the post operation.
         """
         url = f"{self.BASE_URL}/statuses/update.json"
-        self.logger.info(f"Posting tweet: {tweet_text[:50]}...")  # Log the start of tweet posting
-        try:
-            response = self.session.post(url, data={'status': tweet_text})
-            response.raise_for_status()
-            self.logger.info(f"Successfully posted tweet: {tweet_text[:50]}...")
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error posting tweet: {e}")
-            return None
-        except Exception as e:
-            self.logger.error(f"Unexpected error during tweet posting: {e}")
-            return None
+        self.logger.info(f"Posting tweet: {tweet_text}")
+        attempt = 0
+        while attempt < retries:
+            try:
+                response = self.session.post(url, data={"status": tweet_text})
+                response.raise_for_status()
+                result = response.json()
+                self.logger.info(f"Tweet posted: {result}")
+                return result
+            except requests.exceptions.RequestException as e:
+                if response.status_code == 429:  # Rate limit error
+                    self.logger.warning(f"Rate limit exceeded. Retrying after delay. Attempt {attempt + 1}")
+                    time.sleep(2 ** attempt * backoff_factor)
+                else:
+                    self.logger.error(f"Error posting tweet: {e}")
+                    time.sleep(2 ** attempt * backoff_factor)
+            except Exception as e:
+                self.logger.error(f"Unexpected error during tweet posting: {e}")
+                time.sleep(2 ** attempt * backoff_factor)
+            attempt += 1
+        self.logger.error(f"Failed to post tweet after {retries} attempts.")
+        return None
