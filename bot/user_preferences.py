@@ -18,6 +18,7 @@ class UserPreferences:
         required for managing user preferences.
 
         :param config_manager: An instance of ConfigManager for retrieving default settings.
+        :param database_client: An instance of DatabaseClient for interacting with the database.
         """
         if hasattr(self, '_initialized') and self._initialized:
             return
@@ -26,7 +27,16 @@ class UserPreferences:
         self.db_client = database_client
         self.preferences = {}
         self._initialized = True
-        self.tone = 'reserved'  # Default tone
+
+        # Initialize attributes with default values or from loaded preferences
+        self.load_preferences()
+
+        self.tone = self.preferences.get('tone', 'reserved')
+        self.tags = self.preferences.get('tags', [])
+        self.length = self.preferences.get('length', 'short')
+        self.category = self.preferences.get('category', 'general')
+        self.audience = self.preferences.get('audience', 'general')
+        self.language = self.preferences.get('language', 'en')
 
     def set_tone(self, tone):
         self.tone = tone
@@ -41,8 +51,7 @@ class UserPreferences:
         Returns:
             str: The preferred tone directive (e.g., "reserved", "vulgar", "bold", "humble").
         """
-        # Example implementation, defaulting to "reserved"
-        return self.tone_directive if hasattr(self, 'tone_directive') else "reserved"
+        return self.tone  # Keeping the tone directive based on the current tone setting
 
     def select_preferred_caption(self, captions):
         """
@@ -93,7 +102,6 @@ class UserPreferences:
             raise ValueError("No suitable captions found after filtering and ranking.")
 
         return selected_caption
-
 
     def load_preferences(self):
         """
