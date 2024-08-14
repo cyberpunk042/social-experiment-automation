@@ -80,22 +80,20 @@ def add_caption_interactive(database_client):
     caption_data = {}
 
     # Interactive input for each required field
-    caption_data["text"] = input("Enter the caption text: ")
+    caption_data["caption_text"] = input("Enter the caption text: ")
     caption_data["tags"] = input("Enter tags (comma-separated): ").split(',')
     caption_data["length"] = input("Enter the caption length (short/medium/long): ")
     caption_data["category"] = input("Enter the caption category: ")
     caption_data["tone"] = input("Enter the caption tone: ")
     
     # Engagement data
-    engagement = {}
-    engagement["likes"] = int(input("Enter the number of likes: "))
-    engagement["shares"] = int(input("Enter the number of shares: "))
-    engagement["comments"] = int(input("Enter the number of comments: "))
-    caption_data["engagement"] = engagement
+    caption_data["likes"] = int(input("Enter the number of likes: "))
+    caption_data["shares"] = int(input("Enter the number of shares: "))
+    caption_data["comments"] = int(input("Enter the number of comments: "))
 
     # Add the caption to the database
     result = database_client.add_caption(caption_data)
-    print(f"Caption added successfully with ID: {result['id']}")
+    print(f"Caption added successfully with ID: {result}")
 
 def add_caption_from_file(database_client, file_path):
     """

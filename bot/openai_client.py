@@ -12,10 +12,13 @@ class OpenAIClient:
         :param config_manager: An instance of ConfigManager to retrieve configuration settings.
         """
         self.api_key = config_manager.get("openai_api_key")
+        if not self.api_key:
+            raise ValueError("API key not found. Please ensure it is set in the environment or .env file.")
+
         self.client = openai.OpenAI(api_key=self.api_key)
         self.model = config_manager.get("openai_engine", "gpt-3.5-turbo")
         self.logger = logging.getLogger(__name__)
-        self.logger.info("OpenAIClient initialized with provided API key and model.")
+        self.logger.info(f"OpenAIClient initialized with API key: {self.api_key[:5]}...")
 
     def complete(self, prompt, max_tokens=150, temperature=0.7, retries=3, timeout=10):
         """

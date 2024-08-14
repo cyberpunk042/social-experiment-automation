@@ -26,12 +26,13 @@ class ConfigManager:
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
-        load_dotenv(env_file_path)
+        load_dotenv(dotenv_path=env_file_path if env_file_path else ".env")  # Ensuring .env is loaded by default
 
         self.config = {}
         self._load_config()
 
         self._initialized = True
+
 
     def _load_config(self):
         """
