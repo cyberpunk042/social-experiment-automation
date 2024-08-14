@@ -65,6 +65,78 @@ poetry run python main.py --action reply_to_comments --platform instagram
 
 The bot will use the credentials and configurations specified in the `.env` file to interact with Instagram.
 
+## Adding Captions to the Database
+
+The bot supports adding new captions to the Supabase database either interactively through the command line or via a JSON file. This feature allows users to populate the database with captions that can later be used for social media posts.
+
+### Usage
+
+You can add captions using two methods:
+
+1. **Interactive Mode**: This mode prompts you to enter each field of the caption interactively.
+
+    To use interactive mode:
+
+    ```bash
+    poetry run python main.py --action add_caption
+    ```
+
+    You will be prompted to enter the following details for each caption:
+
+    - **Caption Text**: The actual caption content.
+    - **Tags**: Tags associated with the caption (comma-separated).
+    - **Length**: Length of the caption (e.g., short, medium, long).
+    - **Category**: Category or theme of the caption (e.g., inspirational, humorous).
+    - **Tone**: The tone of the caption (e.g., friendly, formal).
+    - **Engagement Metrics**: Historical data on engagement, such as the number of likes, shares, and comments.
+
+2. **File Mode**: This mode allows you to add multiple captions from a JSON file.
+
+    To use file mode:
+
+    ```bash
+    poetry run python main.py --action add_caption --file path/to/captions.json
+    ```
+
+    The JSON file should contain an array of caption objects, where each object has the following structure:
+
+    ```json
+    [
+        {
+            "text": "The future belongs to those who believe in the beauty of their dreams.",
+            "tags": ["inspirational", "future", "dreams"],
+            "length": "medium",
+            "category": "inspirational",
+            "tone": "inspirational",
+            "engagement": {
+                "likes": 120,
+                "shares": 15,
+                "comments": 5
+            }
+        },
+        {
+            "text": "Believe you can and you're halfway there.",
+            "tags": ["motivation", "believe", "success"],
+            "length": "short",
+            "category": "motivational",
+            "tone": "encouraging",
+            "engagement": {
+                "likes": 200,
+                "shares": 25,
+                "comments": 10
+            }
+        }
+    ]
+    ```
+
+### Important Notes
+
+- Ensure that the JSON file is correctly formatted and that each caption object includes all required fields.
+- The `DatabaseClient` will validate the structure of each caption before inserting it into the database. If any required fields are missing, the insertion will fail.
+- This feature is integrated with Supabase via the `DatabaseClient`, ensuring that all captions are stored consistently.
+
+
+
 ### Testing
 
 #### Unit Tests

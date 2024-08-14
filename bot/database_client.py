@@ -37,6 +37,43 @@ class DatabaseClient:
 
         self._initialized = True
 
+
+    def add_caption(self, caption_data):
+        """
+        Add a new caption to the Supabase database.
+
+        Args:
+            caption_data (dict): A dictionary representing the caption data.
+
+        Returns:
+            dict: The response from the database, including the inserted caption ID.
+        """
+        # Validate the caption schema
+        self.validate_caption_schema(caption_data)
+        
+        # Insert the caption into the database
+        response = self.supabase.table('captions').insert(caption_data).execute()
+        
+        if response.status_code != 201:
+            raise Exception(f"Failed to add caption: {response.content}")
+        
+        return response.data
+
+    def validate_caption_schema(self, caption_data):
+        """
+        Validate the schema of the provided caption data.
+
+        Args:
+            caption_data (dict): The caption data to validate.
+
+        Raises:
+            ValueError: If the caption data does not conform to the expected schema.
+        """
+        required_keys = {"text", "tags", "length", "category", "tone", "engagement"}
+        if not required_keys.issubset(caption_data.keys()):
+            missing_keys = required_keys - caption_data.keys()
+            raise ValueError(f"Missing required keys in caption data: {missing_keys}")
+        
     def get_user_preferences(self, user_id):
         """
         Retrieve user preferences from the database based on user_id.

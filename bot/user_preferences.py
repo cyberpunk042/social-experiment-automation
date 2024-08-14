@@ -26,6 +26,74 @@ class UserPreferences:
         self.db_client = DatabaseClient(config_manager)
         self.preferences = {}
         self._initialized = True
+        self.tone = 'reserved'  # Default tone
+
+    def set_tone(self, tone):
+        self.tone = tone
+
+    def get_tone(self):
+        return self.tone
+    
+    def get_tone_directive(self):
+        """
+        Retrieve the user's preferred tone directive for generating content.
+
+        Returns:
+            str: The preferred tone directive (e.g., "reserved", "vulgar", "bold", "humble").
+        """
+        # Example implementation, defaulting to "reserved"
+        return self.tone_directive if hasattr(self, 'tone_directive') else "reserved"
+
+    def select_preferred_caption(self, captions):
+        """
+        Select the most appropriate caption from a list based on user preferences.
+
+        Args:
+            captions (list): A list of caption dictionaries retrieved from the database.
+
+        Returns:
+            str: The text of the selected caption.
+
+        Raises:
+            ValueError: If no suitable captions are found.
+        """
+        # User preferences
+        preferred_tags = self.tags
+        preferred_length = self.length
+        preferred_category = self.category
+        preferred_tone = self.tone
+        audience = self.audience  # Additional audience targeting
+        language = self.language  # Multi-language support
+
+        # Filter captions based on user preferences
+        filtered_captions = [
+            caption for caption in captions
+            if (not preferred_tags or any(tag in caption['tags'] for tag in preferred_tags)) and
+            (not preferred_length or caption['length'] == preferred_length) and
+            (not preferred_category or caption['category'] == preferred_category) and
+            (not preferred_tone or caption['tone'] == preferred_tone) and
+            (not audience or caption.get('audience') == audience) and
+            (not language or caption.get('language') == language)
+        ]
+
+        if not filtered_captions:
+            raise ValueError("No suitable captions found based on the given preferences.")
+
+        # Rank captions by engagement or other metrics
+        ranked_captions = sorted(
+            filtered_captions,
+            key=lambda c: (c['engagement']['likes'] + c['engagement']['shares'] + c['engagement']['comments']),
+            reverse=True
+        )
+
+        # Select the top-ranked caption
+        selected_caption = ranked_captions[0]['text'] if ranked_captions else None
+
+        if not selected_caption:
+            raise ValueError("No suitable captions found after filtering and ranking.")
+
+        return selected_caption
+
 
     def load_preferences(self):
         """
