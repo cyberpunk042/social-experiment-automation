@@ -1,6 +1,6 @@
 import logging
 from instapy import InstaPy
-from bot.social_media.instagram_api import InstagramIntegration
+from social_media.instagram_api import InstagramIntegration
 
 class InstaPyIntegration:
     """

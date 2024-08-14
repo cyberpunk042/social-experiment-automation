@@ -78,7 +78,7 @@ You can add captions using two methods:
     To use interactive mode:
 
     ```bash
-    poetry run python main.py --action add_caption
+    poetry run python bot/main.py --action add_caption
     ```
 
     You will be prompted to enter the following details for each caption:
@@ -95,7 +95,7 @@ You can add captions using two methods:
     To use file mode:
 
     ```bash
-    poetry run python main.py --action add_caption --file path/to/captions.json
+    poetry run python bot/main.py --action add_caption --file path/to/captions.json
     ```
 
     The JSON file should contain an array of caption objects, where each object has the following structure:

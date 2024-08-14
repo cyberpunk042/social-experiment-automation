@@ -1,6 +1,6 @@
 import logging
-from bot.config_manager import ConfigManager
-from bot.database_client import DatabaseClient
+from config_manager import ConfigManager
+from database_client import DatabaseClient
 
 class UserPreferences:
     _instance = None

@@ -1,6 +1,6 @@
 import logging
-from bot.smtp_client import SMTPClient
-from bot.user_preferences import UserPreferences
+from smtp_client import SMTPClient
+from user_preferences import UserPreferences
 
 class NotificationService:
     def __init__(self, smtp_client: SMTPClient, user_preferences: UserPreferences):

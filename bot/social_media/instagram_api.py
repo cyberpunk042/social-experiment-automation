@@ -1,7 +1,7 @@
 import requests
 import logging
 import time
-from bot.social_media.social_media_base import SocialMediaIntegration
+from social_media.social_media_base import SocialMediaIntegration
 
 class InstagramIntegration(SocialMediaIntegration):
     """

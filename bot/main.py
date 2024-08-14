@@ -1,8 +1,8 @@
 import argparse
 import json
-from bot.config_manager import ConfigManager
-from bot.database_client import DatabaseClient
-from bot.bot import SocialBot
+from config_manager import ConfigManager
+from database_client import DatabaseClient
+from bot import SocialBot
 
 def create_post(bot, platform, logger):
     """
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     # Initialize the necessary components
     config_manager = ConfigManager()
-    database_client = DatabaseClient()
+    database_client = DatabaseClient(config_manager)
     bot = SocialBot(config_manager)
 
     if args.action == "create_post":

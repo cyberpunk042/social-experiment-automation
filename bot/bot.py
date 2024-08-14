@@ -1,8 +1,8 @@
 import logging
-from bot.social_media.instagram_api import InstagramIntegration
-from bot.social_media.twitter import TwitterIntegration
-from bot.response_generator import ResponseGenerator
-from bot.config_manager import ConfigManager
+from social_media.instagram_api import InstagramIntegration
+from social_media.twitter import TwitterIntegration
+from response_generator import ResponseGenerator
+from config_manager import ConfigManager
 
 class SocialBot:
     """

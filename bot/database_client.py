@@ -1,7 +1,7 @@
 import logging
 import supabase
 import threading
-from bot.config_manager import ConfigManager
+from config_manager import ConfigManager
 
 class DatabaseClient:
     _instance = None

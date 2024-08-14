@@ -1,6 +1,6 @@
 import openai
 import logging
-from bot.config_manager import ConfigManager
+from config_manager import ConfigManager
 from time import sleep
 from requests.exceptions import Timeout, RequestException
 

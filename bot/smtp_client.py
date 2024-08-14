@@ -2,7 +2,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
-from bot.config_manager import ConfigManager
+from config_manager import ConfigManager
 
 class SMTPClient:
     def __init__(self, config_manager: ConfigManager):
