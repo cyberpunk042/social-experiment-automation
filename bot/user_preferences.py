@@ -10,7 +10,7 @@ class UserPreferences:
             cls._instance = super(UserPreferences, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, config_manager: ConfigManager, database_client: DatabaseClient):
+    def __init__(self, config_manager: ConfigManager, database_client: DatabaseClient, user_id: int):
         """
         Initialize the UserPreferences class.
 
@@ -19,12 +19,14 @@ class UserPreferences:
 
         :param config_manager: An instance of ConfigManager for retrieving default settings.
         :param database_client: An instance of DatabaseClient for interacting with the database.
+        :param user_id: The ID of the user whose preferences are being managed.
         """
         if hasattr(self, '_initialized') and self._initialized:
             return
         self.logger = logging.getLogger(__name__)
         self.config_manager = config_manager
         self.db_client = database_client
+        self.user_id = user_id
         self.preferences = {}
         self._initialized = True
 
@@ -103,21 +105,21 @@ class UserPreferences:
 
         return selected_caption
 
-    def load_preferences(self, user_id=None):
+    def load_preferences(self):
         """
         Load preferences from the database or prompt the user to enter them.
 
-        :param user_id: The ID of the user whose preferences are being retrieved.
+        Since this is a POC with a single user, preferences are loaded once.
         """
         try:
-            preferences = self.db_client.get_user_preferences(user_id)
+            preferences = self.db_client.get_user_preferences(self.user_id)
             if preferences:
                 self.preferences = self._validate_preferences(preferences)
-                self.logger.info(f"Loaded preferences for user_id {user_id}")
+                self.logger.info(f"Loaded preferences for user_id {self.user_id}")
             else:
                 self.logger.info(f"No preferences found, prompting user to enter them.")
                 self.preferences = self.prompt_for_preferences()
-                self.db_client.update_user_preferences(user_id, self.preferences)
+                self.db_client.update_user_preferences(self.user_id, self.preferences)
         except Exception as e:
             self.logger.error(f"Failed to load preferences: {e}")
             self.preferences = self._default_preferences()
@@ -140,15 +142,14 @@ class UserPreferences:
 
         return self._validate_preferences(preferences)
 
-    def update_user_preferences(self, user_id):
+    def update_user_preferences(self):
         """
         Update the user's preferences in the database.
 
-        :param user_id: The ID of the user whose preferences are being updated.
         """
         try:
-            self.db_client.update_user_preferences(user_id, self.preferences)
-            self.logger.info(f"Preferences updated for user_id {user_id}")
+            self.db_client.update_user_preferences(self.user_id, self.preferences)
+            self.logger.info(f"Preferences updated for user_id {self.user_id}")
         except Exception as e:
             self.logger.error(f"Failed to update preferences: {e}")
 
@@ -170,7 +171,7 @@ class UserPreferences:
         """
         try:
             validated_preferences = self._validate_preferences(new_preferences)
-            self.db_client.update_user_preferences(validated_preferences)
+            self.db_client.update_user_preferences(self.user_id, validated_preferences)
             self.preferences = validated_preferences
             self.logger.info(f"Updated preferences to {validated_preferences}")
         except Exception as e:

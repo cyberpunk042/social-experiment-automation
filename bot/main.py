@@ -129,7 +129,7 @@ if __name__ == "__main__":
     # Initialize the necessary components
     config_manager = ConfigManager()
     database_client = DatabaseClient(config_manager)
-    user_preferences = UserPreferences(config_manager, database_client)
+    user_preferences = UserPreferences(config_manager, database_client, 1)
     bot = SocialBot(config_manager, database_client, user_preferences)
 
     if args.action == "create_post":
