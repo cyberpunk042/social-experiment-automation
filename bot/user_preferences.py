@@ -103,23 +103,54 @@ class UserPreferences:
 
         return selected_caption
 
-    def load_preferences(self):
+    def load_preferences(self, user_id=None):
         """
-        Load preferences from the database or default settings.
+        Load preferences from the database or prompt the user to enter them.
 
-        Since this is a POC with a single user, preferences are loaded once.
+        :param user_id: The ID of the user whose preferences are being retrieved.
         """
         try:
-            preferences = self.db_client.get_user_preferences()
+            preferences = self.db_client.get_user_preferences(user_id)
             if preferences:
                 self.preferences = self._validate_preferences(preferences)
-                self.logger.info(f"Loaded preferences")
+                self.logger.info(f"Loaded preferences for user_id {user_id}")
             else:
-                self.logger.info(f"No preferences found, using defaults.")
-                self.preferences = self._default_preferences()
+                self.logger.info(f"No preferences found, prompting user to enter them.")
+                self.preferences = self.prompt_for_preferences()
+                self.db_client.update_user_preferences(user_id, self.preferences)
         except Exception as e:
             self.logger.error(f"Failed to load preferences: {e}")
             self.preferences = self._default_preferences()
+
+    def prompt_for_preferences(self):
+        """
+        Prompt the user in the terminal to enter their preferences.
+
+        :return: A dictionary of user preferences.
+        """
+        preferences = {}
+        preferences["notifications_enabled"] = input("Enable notifications (yes/no): ").strip().lower() == "yes"
+        preferences["response_style"] = input("Response style (friendly/formal/casual): ").strip().lower()
+        preferences["content_tone"] = input("Content tone (neutral/positive/negative): ").strip().lower()
+        preferences["content_frequency"] = input("Content frequency (daily/weekly/monthly): ").strip().lower()
+        preferences["notification_method"] = input("Notification method (email/sms/none): ").strip().lower()
+        preferences["interaction_type"] = input("Interaction type (proactive/reactive/neutral): ").strip().lower()
+
+        # Additional preferences can be added here
+
+        return self._validate_preferences(preferences)
+
+    def update_user_preferences(self, user_id):
+        """
+        Update the user's preferences in the database.
+
+        :param user_id: The ID of the user whose preferences are being updated.
+        """
+        try:
+            self.db_client.update_user_preferences(user_id, self.preferences)
+            self.logger.info(f"Preferences updated for user_id {user_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to update preferences: {e}")
 
     def get_preferences(self):
         """
