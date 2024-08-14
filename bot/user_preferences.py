@@ -27,49 +27,47 @@ class UserPreferences:
         self.preferences = {}
         self._initialized = True
 
-    def load_preferences(self, user_id):
+    def load_preferences(self):
         """
-        Load preferences for a given user from the database or default settings.
+        Load preferences from the database or default settings.
 
-        :param user_id: The ID of the user whose preferences are being loaded.
+        Since this is a POC with a single user, preferences are loaded once.
         """
         try:
-            preferences = self.db_client.get_user_preferences(user_id)
+            preferences = self.db_client.get_user_preferences()
             if preferences:
-                self.preferences[user_id] = self._validate_preferences(preferences)
-                self.logger.info(f"Loaded preferences for user {user_id}")
+                self.preferences = self._validate_preferences(preferences)
+                self.logger.info(f"Loaded preferences")
             else:
-                self.logger.info(f"No preferences found for user {user_id}, using defaults.")
-                self.preferences[user_id] = self._default_preferences()
+                self.logger.info(f"No preferences found, using defaults.")
+                self.preferences = self._default_preferences()
         except Exception as e:
-            self.logger.error(f"Failed to load preferences for user {user_id}: {e}")
-            self.preferences[user_id] = self._default_preferences()
+            self.logger.error(f"Failed to load preferences: {e}")
+            self.preferences = self._default_preferences()
 
-    def get_preferences(self, user_id):
+    def get_preferences(self):
         """
-        Retrieve preferences for a user, loading them if not already in memory.
+        Retrieve preferences, loading them if not already in memory.
 
-        :param user_id: The ID of the user whose preferences are being retrieved.
         :return: A dictionary of user preferences.
         """
-        if user_id not in self.preferences:
-            self.load_preferences(user_id)
-        return self.preferences.get(user_id, self._default_preferences())
+        if not self.preferences:
+            self.load_preferences()
+        return self.preferences
 
-    def update_preferences(self, user_id, new_preferences):
+    def update_preferences(self, new_preferences):
         """
         Update the user's preferences in the database and in memory.
 
-        :param user_id: The ID of the user whose preferences are being updated.
         :param new_preferences: A dictionary of new preferences to be updated.
         """
         try:
             validated_preferences = self._validate_preferences(new_preferences)
-            self.db_client.update_user_preferences(user_id, validated_preferences)
-            self.preferences[user_id] = validated_preferences
-            self.logger.info(f"Updated preferences for user {user_id} to {validated_preferences}")
+            self.db_client.update_user_preferences(validated_preferences)
+            self.preferences = validated_preferences
+            self.logger.info(f"Updated preferences to {validated_preferences}")
         except Exception as e:
-            self.logger.error(f"Failed to update preferences for user {user_id}: {e}")
+            self.logger.error(f"Failed to update preferences: {e}")
 
     def _default_preferences(self):
         """
@@ -84,6 +82,12 @@ class UserPreferences:
             "content_frequency": self.config_manager.get("default_content_frequency", "daily"),
             "notification_method": self.config_manager.get("default_notification_method", "email"),
             "interaction_type": self.config_manager.get("default_interaction_type", "reactive"),
+            "comment_response_style": self.config_manager.get("default_comment_response_style", "friendly"),
+            "comment_content_tone": self.config_manager.get("default_comment_content_tone", "positive"),
+            "comment_interaction_type": self.config_manager.get("default_comment_interaction_type", "proactive"),
+            "reply_response_style": self.config_manager.get("default_reply_response_style", "formal"),
+            "reply_content_tone": self.config_manager.get("default_reply_content_tone", "neutral"),
+            "reply_interaction_type": self.config_manager.get("default_reply_interaction_type", "reactive"),
         }
 
     def _validate_preferences(self, preferences):
@@ -120,5 +124,31 @@ class UserPreferences:
         if preferences.get("interaction_type") not in valid_interaction_types:
             self.logger.warning(f"Invalid interaction type: {preferences.get('interaction_type')}, setting to default.")
             preferences["interaction_type"] = self.config_manager.get("default_interaction_type", "reactive")
+
+        # Validate specific comment preferences
+        if preferences.get("comment_response_style") not in valid_response_styles:
+            self.logger.warning(f"Invalid comment response style: {preferences.get('comment_response_style')}, setting to default.")
+            preferences["comment_response_style"] = self.config_manager.get("default_comment_response_style", "friendly")
+
+        if preferences.get("comment_content_tone") not in valid_content_tones:
+            self.logger.warning(f"Invalid comment content tone: {preferences.get('comment_content_tone')}, setting to default.")
+            preferences["comment_content_tone"] = self.config_manager.get("default_comment_content_tone", "positive")
+
+        if preferences.get("comment_interaction_type") not in valid_interaction_types:
+            self.logger.warning(f"Invalid comment interaction type: {preferences.get('comment_interaction_type')}, setting to default.")
+            preferences["comment_interaction_type"] = self.config_manager.get("default_comment_interaction_type", "proactive")
+
+        # Validate specific reply preferences
+        if preferences.get("reply_response_style") not in valid_response_styles:
+            self.logger.warning(f"Invalid reply response style: {preferences.get('reply_response_style')}, setting to default.")
+            preferences["reply_response_style"] = self.config_manager.get("default_reply_response_style", "formal")
+
+        if preferences.get("reply_content_tone") not in valid_content_tones:
+            self.logger.warning(f"Invalid reply content tone: {preferences.get('reply_content_tone')}, setting to default.")
+            preferences["reply_content_tone"] = self.config_manager.get("default_reply_content_tone", "neutral")
+
+        if preferences.get("reply_interaction_type") not in valid_interaction_types:
+            self.logger.warning(f"Invalid reply interaction type: {preferences.get('reply_interaction_type')}, setting to default.")
+            preferences["reply_interaction_type"] = self.config_manager.get("default_reply_interaction_type", "reactive")
 
         return preferences

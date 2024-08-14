@@ -69,12 +69,43 @@ class OpenAIClient:
         self.logger.error("Failed to generate completion after multiple attempts.")
         raise Exception("Failed to generate completion after multiple attempts.")
 
-# Example usage of the OpenAIClient with parameter validation and error handling
-if __name__ == "__main__":
-    config = ConfigManager()
-    client = OpenAIClient(config)
-    try:
-        result = client.complete("Hello, how are you?", max_tokens=50)
-        print(result)
-    except Exception as e:
-        print(f"Error: {e}")
+    def generate_image(self, prompt, n=1, size="1024x1024", retries=3, timeout=30):
+        """
+        Generate an image based on the provided prompt using DALL-E via OpenAI API.
+
+        :param prompt: The text prompt to generate an image for.
+        :param n: The number of images to generate.
+        :param size: The size of the generated images (e.g., "1024x1024").
+        :param retries: The number of times to retry the request in case of a transient error.
+        :param timeout: Timeout in seconds for the API call.
+        :return: A URL to the generated image.
+        :raises Exception: If the image generation fails after all retries.
+        """
+        self.logger.info(f"Generating image for prompt: {prompt[:50]}...")
+
+        for attempt in range(retries):
+            try:
+                response = openai.Image.create(
+                    prompt=prompt,
+                    n=n,
+                    size=size,
+                    timeout=timeout
+                )
+                self.logger.info("Image generated successfully.")
+                return response['data'][0]['url']
+
+            except (Timeout, RequestException) as e:
+                self.logger.warning(f"Request failed with error: {e}. Retrying {retries - attempt - 1} more times...")
+                sleep(2)
+
+            except openai.error.RateLimitError as e:
+                self.logger.error("Rate limit exceeded. Pausing before retrying...")
+                sleep(60)
+                continue
+
+            except openai.error.OpenAIError as e:
+                self.logger.error(f"OpenAI API error: {e}.")
+                raise
+
+        self.logger.error("Failed to generate image after multiple attempts.")
+        raise Exception("Failed to generate image after multiple attempts.")

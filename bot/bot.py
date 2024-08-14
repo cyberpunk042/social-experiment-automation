@@ -1,95 +1,77 @@
 import logging
-from bot.social_media.instagram_integration import InstagramIntegration
-from bot.response_generator import ResponseGenerator  # Assuming this is where ResponseGenerator is implemented
+from bot.social_media.instagram_api import InstagramIntegration
+from bot.social_media.twitter import TwitterIntegration
+from bot.response_generator import ResponseGenerator
+from bot.config_manager import ConfigManager
 
-class InstagramBot:
+class SocialBot:
     """
-    InstagramBot provides a high-level interface for interacting with Instagram using the
-    InstagramIntegration API and ResponseGenerator. It supports operations such as generating and
-    posting images, posting comments, replying to comments, following users, and more.
-
-    Attributes:
-        instagram_api (InstagramIntegration): The Instagram API integration instance.
-        response_generator (ResponseGenerator): Instance for generating responses and content.
-        interactive (bool): Determines if actions require confirmation.
+    SocialBot provides a high-level interface for interacting with multiple social media platforms.
+    It supports operations such as generating and posting images, posting comments, replying to comments,
+    and managing followers across different platforms like Instagram and Twitter.
     """
 
-    def __init__(self, config_manager, interactive=False):
+    def __init__(self, config_manager: ConfigManager, interactive=False):
         """
-        Initialize the InstagramBot with the configuration manager and setup API integrations.
+        Initialize the SocialBot with configuration and set up platform integrations.
 
         Args:
             config_manager (ConfigManager): The configuration manager for retrieving settings.
             interactive (bool): If True, actions will require user confirmation.
         """
         self.logger = logging.getLogger(__name__)
-        self.instagram_api = InstagramIntegration(config_manager)
-        self.response_generator = ResponseGenerator()
         self.interactive = interactive
-        self.logger.info("InstagramBot initialized.")
+        self.platforms = {
+            "instagram": InstagramIntegration(config_manager),
+            "twitter": TwitterIntegration(config_manager)
+        }
+        self.response_generator = ResponseGenerator(config_manager)
+        self.logger.info("SocialBot initialized with integrations for Instagram and Twitter.")
 
-    def get_posts_by_hashtag(self, hashtag, retries=3, backoff_factor=0.3):
+    def post_image(self, platform, caption=None):
         """
-        Retrieve posts associated with a specific hashtag.
+        Generate an image based on the provided or generated caption and create a new post on the specified platform.
 
         Args:
-            hashtag (str): The hashtag to search for posts.
-            retries (int): Number of retries in case of failures.
-            backoff_factor (float): Factor for increasing delay between retries.
-
-        Returns:
-            list: A list of posts associated with the hashtag.
-
-        Raises:
-            Exception: If there is an error in retrieving posts.
-        """
-        try:
-            posts = self.instagram_api.get_posts(hashtag, retries, backoff_factor)
-            self.logger.info(f"Retrieved posts for hashtag: {hashtag}")
-            return posts
-        except Exception as e:
-            self.logger.error(f"Failed to retrieve posts for hashtag {hashtag}: {e}")
-            raise
-
-    def create_post(self, caption=None):
-        """
-        Generate an image based on the provided or generated caption and create a new post on Instagram.
-
-        Args:
+            platform (str): The platform to post the image on (e.g., 'instagram', 'twitter').
             caption (str): Optional caption for the post. If not provided, it will be generated.
 
         Returns:
             dict: The result of the post operation.
 
         Raises:
-            Exception: If there is an error in creating the post.
+            Exception: If there is an error in creating the post or the platform is unsupported.
         """
+        if platform not in self.platforms:
+            raise ValueError(f"Platform {platform} is not supported.")
+
         try:
             if not caption:
                 caption = self.response_generator.generate_caption()
 
             # Generate the image based on the caption
-            image_path = self.response_generator.generate_image(caption)
+            image_url = self.response_generator.generate_image(caption)
 
             if self.interactive:
-                action_description = f"Creating a new post with generated image {image_path} and caption '{caption}'."
+                action_description = f"Creating a new post on {platform} with generated image and caption '{caption}'."
                 if not self.confirm_action(action_description):
-                    self.logger.info("Post creation canceled by user.")
+                    self.logger.info(f"Post creation canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
 
             # Post the image with the generated caption
-            result = self.instagram_api.post_image(image_path, caption)
-            self.logger.info(f"Created a new post with caption: {caption}")
+            result = self.platforms[platform].post_image(image_url, caption)
+            self.logger.info(f"Created a new post on {platform} with caption: {caption}")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to create post: {e}")
+            self.logger.error(f"Failed to create post on {platform}: {e}")
             raise
 
-    def post_comment_on_post(self, media_id, context=None):
+    def post_comment(self, platform, media_id, context=None):
         """
-        Post a comment on a specific Instagram post, generating the comment using context.
+        Post a comment on a specific media item on the specified platform.
 
         Args:
+            platform (str): The platform to post the comment on (e.g., 'instagram', 'twitter').
             media_id (str): The ID of the media (post) to comment on.
             context (str): Context to generate the comment. If not provided, it will be auto-generated.
 
@@ -97,29 +79,33 @@ class InstagramBot:
             dict: The result of the comment operation.
 
         Raises:
-            Exception: If there is an error in posting the comment.
+            Exception: If there is an error in posting the comment or the platform is unsupported.
         """
+        if platform not in self.platforms:
+            raise ValueError(f"Platform {platform} is not supported.")
+
         try:
             comment_text = self.response_generator.generate_comment(context)
-            
+
             if self.interactive:
-                action_description = f"Posting comment on media ID {media_id}: '{comment_text}'."
+                action_description = f"Posting comment on {platform} media ID {media_id}: '{comment_text}'."
                 if not self.confirm_action(action_description):
-                    self.logger.info("Comment posting canceled by user.")
+                    self.logger.info(f"Comment posting canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
-            
-            result = self.instagram_api.post_comment(media_id, comment_text)
-            self.logger.info(f"Posted comment on media ID {media_id}.")
+
+            result = self.platforms[platform].post_comment(media_id, comment_text)
+            self.logger.info(f"Posted comment on {platform} media ID {media_id}.")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to post comment on media ID {media_id}: {e}")
+            self.logger.error(f"Failed to post comment on {platform} media ID {media_id}: {e}")
             raise
 
-    def reply_to_comment_on_post(self, comment_id, context=None):
+    def reply_to_comment(self, platform, comment_id, context=None):
         """
-        Reply to a comment on a specific Instagram post, generating the reply using context.
+        Reply to a comment on a specific media item on the specified platform.
 
         Args:
+            platform (str): The platform to reply to the comment on (e.g., 'instagram', 'twitter').
             comment_id (str): The ID of the comment to reply to.
             context (str): Context to generate the reply. If not provided, it will be auto-generated.
 
@@ -127,29 +113,33 @@ class InstagramBot:
             dict: The result of the reply operation.
 
         Raises:
-            Exception: If there is an error in replying to the comment.
+            Exception: If there is an error in replying to the comment or the platform is unsupported.
         """
+        if platform not in self.platforms:
+            raise ValueError(f"Platform {platform} is not supported.")
+
         try:
             reply_text = self.response_generator.generate_reply(context)
-            
+
             if self.interactive:
-                action_description = f"Replying to comment ID {comment_id} with: '{reply_text}'."
+                action_description = f"Replying to comment on {platform} comment ID {comment_id} with: '{reply_text}'."
                 if not self.confirm_action(action_description):
-                    self.logger.info("Reply action canceled by user.")
+                    self.logger.info(f"Reply action canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
-            
-            result = self.instagram_api.reply_to_comment(comment_id, reply_text)
-            self.logger.info(f"Replied to comment ID {comment_id}.")
+
+            result = self.platforms[platform].reply_to_comment(comment_id, reply_text)
+            self.logger.info(f"Replied to comment on {platform} comment ID {comment_id}.")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to reply to comment ID {comment_id}: {e}")
+            self.logger.error(f"Failed to reply to comment on {platform} comment ID {comment_id}: {e}")
             raise
 
-    def follow_users_by_tags(self, tags, amount=10):
+    def follow_users(self, platform, tags, amount=10):
         """
-        Follow users based on specified tags.
+        Follow users based on specified tags on the specified platform.
 
         Args:
+            platform (str): The platform to follow users on (e.g., 'instagram', 'twitter').
             tags (list): List of tags to use for finding users to follow.
             amount (int): Number of users to follow.
 
@@ -157,47 +147,54 @@ class InstagramBot:
             dict: The result of the follow operation.
 
         Raises:
-            Exception: If there is an error in following users.
+            Exception: If there is an error in following users or the platform is unsupported.
         """
+        if platform not in self.platforms:
+            raise ValueError(f"Platform {platform} is not supported.")
+
         try:
             if self.interactive:
-                action_description = f"Following {amount} users based on tags: {tags}."
+                action_description = f"Following {amount} users on {platform} based on tags: {tags}."
                 if not self.confirm_action(action_description):
-                    self.logger.info("Follow action canceled by user.")
+                    self.logger.info(f"Follow action canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
-            
-            result = self.instagram_api.follow_users(amount=amount, tags=tags)
-            self.logger.info(f"Followed users by tags: {tags}.")
+
+            result = self.platforms[platform].follow_users(amount=amount, tags=tags)
+            self.logger.info(f"Followed users on {platform} by tags: {tags}.")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to follow users by tags {tags}: {e}")
+            self.logger.error(f"Failed to follow users on {platform} by tags {tags}: {e}")
             raise
 
-    def unfollow_users(self, amount=10):
+    def unfollow_users(self, platform, amount=10):
         """
-        Unfollow a specified number of users.
+        Unfollow a specified number of users on the specified platform.
 
         Args:
+            platform (str): The platform to unfollow users on (e.g., 'instagram', 'twitter').
             amount (int): Number of users to unfollow.
 
         Returns:
             dict: The result of the unfollow operation.
 
         Raises:
-            Exception: If there is an error in unfollowing users.
+            Exception: If there is an error in unfollowing users or the platform is unsupported.
         """
+        if platform not in self.platforms:
+            raise ValueError(f"Platform {platform} is not supported.")
+
         try:
             if self.interactive:
-                action_description = f"Unfollowing {amount} users."
+                action_description = f"Unfollowing {amount} users on {platform}."
                 if not self.confirm_action(action_description):
-                    self.logger.info("Unfollow action canceled by user.")
+                    self.logger.info(f"Unfollow action canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
-            
-            result = self.instagram_api.unfollow_users(amount=amount)
-            self.logger.info(f"Unfollowed {amount} users.")
+
+            result = self.platforms[platform].unfollow_users(amount=amount)
+            self.logger.info(f"Unfollowed {amount} users on {platform}.")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to unfollow users: {e}")
+            self.logger.error(f"Failed to unfollow users on {platform}: {e}")
             raise
 
     def confirm_action(self, action_description):

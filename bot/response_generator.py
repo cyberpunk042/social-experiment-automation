@@ -1,62 +1,149 @@
 import logging
 from bot.openai_client import OpenAIClient
-import random
+from bot.database_client import DatabaseClient
+from bot.user_preferences import UserPreferences
 
 class ResponseGenerator:
-    def __init__(self, openai_client: OpenAIClient, user_preferences):
-        """
-        Initialize the ResponseGenerator class.
+    """
+    ResponseGenerator is responsible for generating content such as captions, images,
+    comments, and replies. It interacts with the database to retrieve captions,
+    uses DALL-E for image generation, and considers user preferences for personalized content.
+    """
 
-        :param openai_client: The OpenAIClient instance used for generating responses.
-        :param user_preferences: The UserPreferences instance used for retrieving user-specific settings.
+    def __init__(self, openai_client: OpenAIClient, database_client: DatabaseClient, user_preferences: UserPreferences):
+        """
+        Initialize the ResponseGenerator with the necessary clients and preferences.
+
+        Args:
+            openai_client (OpenAIClient): The OpenAIClient instance used for generating responses and images.
+            database_client (DatabaseClient): The client to interact with the Supabase database.
+            user_preferences (UserPreferences): The user preferences for personalized content.
         """
         self.openai_client = openai_client
+        self.database_client = database_client
         self.user_preferences = user_preferences
         self.logger = logging.getLogger(__name__)
 
-    async def generate_response(self, prompt):
+    def generate_caption(self):
         """
-        Generate a response based on the provided prompt.
+        Retrieve and personalize a caption from the database for a new Instagram post.
 
-        :param prompt: The text prompt to generate a response for.
-        :return: The generated response as a string, or an error message if generation fails.
-        """
-        try:
-            self.logger.info(f"Generating response for prompt: {prompt}")
-            return await self.openai_client.complete(prompt)
-        except Exception as e:
-            self.logger.exception(f"Failed to generate response for prompt '{prompt}': {e}")
-            return "Sorry, I couldn't generate a response."
+        Returns:
+            str: A retrieved and personalized caption.
 
-    async def generate_personalized_reply(self, comment):
-        """
-        Generate a personalized reply to a comment based on user preferences.
-
-        :param comment: The comment to reply to.
-        :return: The generated reply as a string, or an error message if generation fails.
+        Raises:
+            Exception: If no captions are found or there is an issue with the database.
         """
         try:
-            user_pref = self.user_preferences.get_preferences(comment['user_id'])
-            response_style = user_pref.get("response_style", "neutral")
-            interaction_type = user_pref.get("interaction_type", "neutral")
+            captions = self.database_client.get_table("captions")
+            if not captions:
+                raise Exception("No captions found in the database.")
 
-            prompt = f"Reply to '{comment['text']}' in a {response_style} style for a {interaction_type} interaction."
-            self.logger.info(f"Generating personalized reply for comment: {comment['text']} with style: {response_style}")
-            return await self.generate_response(prompt)
+            # Select and personalize a caption based on user preferences
+            caption = self.user_preferences.select_preferred_caption(captions)
+            response_style = self.user_preferences.response_style
+            content_tone = self.user_preferences.content_tone
+            
+            prompt = f"Generate a caption in a {response_style} style with a {content_tone} tone: '{caption}'"
+            personalized_caption = self.openai_client.complete(prompt)
+            return personalized_caption
+
         except Exception as e:
-            self.logger.exception(f"Failed to generate personalized reply for comment '{comment['text']}': {e}")
-            return "Sorry, I couldn't generate a reply."
+            raise Exception(f"Error retrieving or personalizing caption: {e}")
 
-    async def select_random_comment(self, comments):
+    def generate_image(self, caption):
         """
-        Select a random comment from the provided list of comments.
+        Generate an image based on the provided caption using DALL-E.
 
-        :param comments: A list of comments.
-        :return: A randomly selected comment, or None if the list is empty.
+        Args:
+            caption (str): The caption to inspire the image generation.
+
+        Returns:
+            str: The URL to the generated image.
+
+        Raises:
+            Exception: If the image generation fails.
         """
-        if comments:
-            selected_comment = random.choice(comments)
-            self.logger.info(f"Selected random comment: {selected_comment['text']}")
-            return selected_comment
-        self.logger.info("No comments available to select.")
-        return None
+        try:
+            preferences = self.user_preferences.get_image_preferences()
+            modified_caption = f"{caption} with elements such as {preferences['style']} style, {preferences['color_scheme']} color scheme."
+            image_url = self.openai_client.generate_image(modified_caption)
+            return image_url
+        except Exception as e:
+            raise Exception(f"Image generation failed: {e}")
+
+    async def generate_personalized_comment(self, context=None):
+        """
+        Generate a personalized comment for an Instagram post based on the provided context.
+
+        Args:
+            context (str): Optional context to guide the comment generation.
+
+        Returns:
+            str: A generated personalized comment.
+
+        Raises:
+            Exception: If personalized comment generation fails.
+        """
+        try:
+            response_style = self.user_preferences.comment_response_style
+            content_tone = self.user_preferences.comment_content_tone
+            interaction_type = self.user_preferences.comment_interaction_type
+            
+            prompt = f"Generate a comment in a {response_style} style with a {content_tone} tone that aligns with {interaction_type} interactions. Context: {context}"
+            personalized_comment = await self.openai_client.complete(prompt)
+            return personalized_comment
+        except Exception as e:
+            raise Exception(f"Error generating personalized comment: {e}")
+
+    async def generate_personalized_reply(self, context=None):
+        """
+        Generate a personalized reply to a comment on an Instagram post based on the provided context.
+
+        Args:
+            context (str): Optional context to guide the reply generation.
+
+        Returns:
+            str: A generated personalized reply.
+
+        Raises:
+            Exception: If personalized reply generation fails.
+        """
+        try:
+            response_style = self.user_preferences.reply_response_style
+            content_tone = self.user_preferences.reply_content_tone
+            interaction_type = self.user_preferences.reply_interaction_type
+            
+            prompt = f"Generate a reply in a {response_style} style with a {content_tone} tone that aligns with {interaction_type} interactions. Context: {context}"
+            personalized_reply = await self.openai_client.complete(prompt)
+            return personalized_reply
+        except Exception as e:
+            raise Exception(f"Error generating personalized reply: {e}")
+
+    async def generate_all_content_for_post(self, context=None):
+        """
+        Generate all necessary content (caption, image, comment, and reply) for a post.
+
+        Args:
+            context (str): Optional context to guide the content generation.
+
+        Returns:
+            dict: A dictionary containing the generated caption, image path, comment, and reply.
+
+        Raises:
+            Exception: If any part of the content generation process fails.
+        """
+        try:
+            caption = self.generate_caption()
+            image_url = self.generate_image(caption)
+            comment = await self.generate_personalized_comment(context)
+            reply = await self.generate_personalized_reply(context)
+
+            return {
+                "caption": caption,
+                "image_url": image_url,
+                "comment": comment,
+                "reply": reply
+            }
+        except Exception as e:
+            raise Exception(f"Error generating content for post: {e}")
