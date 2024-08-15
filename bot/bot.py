@@ -28,6 +28,8 @@ class SocialBot:
             "instagram": InstagramIntegration(config_manager),
             "twitter": TwitterIntegration(config_manager)
         }
+        self.database_client = database_client
+        self.user_preferences= user_preferences
         self.response_generator = ResponseGenerator(openai_client, database_client, user_preferences)
         self.logger.info("SocialBot initialized with integrations for Instagram and Twitter.")
 
@@ -53,14 +55,15 @@ class SocialBot:
                 
                 # Retrieve captions from the database
                 captions = self.database_client.get_data("captions")
+                generated_captions = self.database_client.get_data("generated_captions")
                 if not captions:
                     self.logger.error("No captions found in the database.")
                     raise Exception("No captions found in the database.")
 
                 # Select a base caption based on user preferences
                 try:
-                    caption = self.user_preferences.select_preferred_caption(captions)
-                    caption_text = caption.caption_text
+                    caption = self.user_preferences.select_preferred_caption(captions, generated_captions)
+                    caption_text = caption.get('caption_text')
                 except ValueError as e:
                     self.logger.error(f"No suitable captions found: {e}")
                     raise Exception("Error retrieving or personalizing caption: No suitable captions found.")
@@ -70,9 +73,9 @@ class SocialBot:
             # Generate the image based on the caption text
             image_url = self.response_generator.generate_image(generated_caption)
 
-            if caption.id:
+            if caption.get("id"):
                 # Save the generated caption to Supabase and link it to the existing caption record
-                self.database_client.add_generated_caption(generated_caption, caption_text, image_url, caption.id)
+                self.database_client.add_generated_caption(generated_caption, caption_text, image_url, caption.get("id"))
 
             if self.interactive:
                 action_description = f"Creating a new post on {platform} with generated image and caption '{generated_caption}'."

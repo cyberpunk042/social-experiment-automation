@@ -114,12 +114,13 @@ class UserPreferences:
 
         return self._validate_preferences(preferences)
 
-    def select_preferred_caption(self, captions):
+    def select_preferred_caption(self, captions, generated_captions):
         """
-        Select the most appropriate caption from a list based on user preferences.
+        Select the most appropriate caption from a list based on user preferences, excluding already generated captions.
         
         Args:
             captions (list): A list of caption dictionaries retrieved from the database.
+            generated_captions (list): A list of generated caption dictionaries to be excluded, containing the caption_id.
         
         Returns:
             str: The text of the selected caption.
@@ -127,7 +128,7 @@ class UserPreferences:
         Raises:
             ValueError: If no suitable captions are found.
         """
-
+        
         def filter_captions(captions, tags=None, length=None, category=None, tone=None):
             return [
                 caption for caption in captions
@@ -136,7 +137,11 @@ class UserPreferences:
                 (not category or caption.get('category') == category) and
                 (not tone or caption.get('tone') == tone)
             ]
-
+        
+        # Exclude already generated captions
+        generated_caption_ids = {gen_caption['caption_id'] for gen_caption in generated_captions}
+        captions = [caption for caption in captions if caption.get('id') not in generated_caption_ids]
+        
         # Step 1: Try exact match
         filtered_captions = filter_captions(captions, self.tags, self.length, self.category, self.tone)
         
@@ -163,16 +168,17 @@ class UserPreferences:
             key=lambda c: (c.get('likes', 0) + c.get('shares', 0) + c.get('comments', 0)),
             reverse=True
         )
-
+        
         # Select the top-ranked caption
-        selected_caption = ranked_captions[0].get('caption_text') if ranked_captions else None
-
+        selected_caption = ranked_captions[0] if ranked_captions else None
+        
         if not selected_caption:
             self.logger.error("No suitable captions found after filtering and ranking.")
             raise ValueError("No suitable captions found after filtering and ranking.")
         
-        self.logger.info(f"Selected caption: {selected_caption}")
+        self.logger.info(f"Selected caption text: {selected_caption.get('caption_text')}")
         return selected_caption
+
 
 
 

@@ -122,6 +122,7 @@ if __name__ == "__main__":
     parser.add_argument("--comment_text", type=str, help="The text of the comment to post")
     parser.add_argument("--reply_text", type=str, help="The text of the reply to post")
     parser.add_argument("--file", type=str, help="Path to JSON file for adding captions")
+    parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
 
     args = parser.parse_args()
 
@@ -130,7 +131,8 @@ if __name__ == "__main__":
     database_client = DatabaseClient(config_manager)
     user_preferences = UserPreferences(config_manager, database_client, 1)
     openai_client = OpenAIClient(config_manager, user_preferences)
-    bot = SocialBot(config_manager, openai_client, database_client, user_preferences)
+    interactive_mode = args.interactive
+    bot = SocialBot(config_manager, openai_client, database_client, user_preferences, interactive_mode)
 
     if args.action == "create_post":
         if not args.platform:
