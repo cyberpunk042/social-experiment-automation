@@ -4,6 +4,7 @@ from user_preferences import UserPreferences
 from database_client import DatabaseClient
 from social_media.instagram_api import InstagramIntegration
 from social_media.twitter import TwitterIntegration
+from social_media.facebook_api import FacebookIntegration
 from response_generator import ResponseGenerator
 from config_manager import ConfigManager
 
@@ -26,7 +27,8 @@ class SocialBot:
         self.interactive = interactive
         self.platforms = {
             "instagram": InstagramIntegration(config_manager),
-            "twitter": TwitterIntegration(config_manager)
+            "twitter": TwitterIntegration(config_manager),
+            "facebook": FacebookIntegration(config_manager)
         }
         self.database_client = database_client
         self.user_preferences = user_preferences
