@@ -1,10 +1,25 @@
 import argparse
 import json
+import os
+import logging
+from uuid import uuid4
+from datetime import datetime
 from openai_client import OpenAIClient
 from user_preferences import UserPreferences
 from config_manager import ConfigManager
 from database_client import DatabaseClient
 from bot import SocialBot
+
+LOG_DIR = 'logs'
+LOG_FILE = f"{LOG_DIR}/{datetime.today().strftime('%Y-%m-%d-%H:%M:%S')}-{uuid4()}.log"
+
+if not os.path.exists(LOG_DIR):
+    os.mkdir(LOG_DIR)
+    
+# Logging configuration
+logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 def create_post(bot, platform, logger):
     """
