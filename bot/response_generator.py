@@ -83,7 +83,7 @@ class ResponseGenerator:
         """
         try:
             preferences = self.user_preferences.get_preferences()  # Ensuring consistency in accessing preferences
-            modified_caption = f"{caption} with elements such as {preferences['style']} style, {preferences['color_scheme']} color scheme."
+            modified_caption = f"{caption} with elements such as {preferences.get('style', None)} style, {preferences.get('color_scheme', None)} color scheme."
             image_url = self.openai_client.generate_image(modified_caption)
             self.logger.info(f"Generated image URL: {image_url}")
             return image_url

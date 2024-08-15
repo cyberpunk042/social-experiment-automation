@@ -20,7 +20,7 @@ def create_post(bot, platform, logger):
     """
     try:
         result = bot.post_image(platform)
-        logger.info(f"Post created successfully on {platform} with ID: {result['id']}")
+        logger.info(f"Post created successfully on {platform} with ID: {result}")
         return result
     except Exception as e:
         logger.error(f"Failed to create post on {platform}: {e}")
@@ -128,8 +128,8 @@ if __name__ == "__main__":
     # Initialize the necessary components
     config_manager = ConfigManager()
     database_client = DatabaseClient(config_manager)
-    openai_client = OpenAIClient(config_manager)
     user_preferences = UserPreferences(config_manager, database_client, 1)
+    openai_client = OpenAIClient(config_manager, user_preferences)
     bot = SocialBot(config_manager, openai_client, database_client, user_preferences)
 
     if args.action == "create_post":
