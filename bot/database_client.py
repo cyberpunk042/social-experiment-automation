@@ -3,6 +3,7 @@ import threading
 from supabase import create_client, Client
 from postgrest.exceptions import APIError
 from config_manager import ConfigManager
+from datetime import datetime, timedelta
 
 class DatabaseClient:
     _instance = None
@@ -75,6 +76,43 @@ class DatabaseClient:
                 self.logger.error(f"API Error response content: {api_err.args[0]}")
             except AttributeError:
                 self.logger.error("API Error response content is not available.")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error: {str(e)}")
+            raise
+        
+        
+    def add_generated_caption(self, caption_text, prompt, image_url, caption_id, model="gpt-3.5-turbo"):
+        """
+        Save an AI-generated caption to Supabase and link it to the existing caption record.
+
+        :param caption_text: The generated caption text.
+        :param prompt: The prompt used to generate the caption.
+        :param caption_id: The ID of the existing caption in the captions table.
+        :param model: The AI model used for generating the caption.
+        :return: The inserted generated caption data.
+        """
+        generated_caption_data = {
+            "caption_text": caption_text,
+            "prompt": prompt,
+            "caption_id": caption_id,  # Linking to the original caption
+            "is_generated": True,
+            "generation_date": datetime.now().isoformat(),
+            "ai_model_used": model,
+            "image_url": image_url
+        }
+
+        try:
+            response = self.client.table('generated_captions').insert(generated_caption_data).execute()
+            if response.data:
+                self.logger.info("Generated caption saved to Supabase successfully.")
+                return response.data
+            else:
+                self.logger.error("Failed to insert generated caption.")
+                return None
+        
+        except APIError as api_err:
+            self.logger.error(f"Supabase API Error: {api_err}")
             raise
         except Exception as e:
             self.logger.error(f"Unexpected error: {str(e)}")

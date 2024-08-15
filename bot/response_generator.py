@@ -25,7 +25,7 @@ class ResponseGenerator:
         self.user_preferences = user_preferences
         self.logger = logging.getLogger(__name__)
 
-    def generate_caption(self):
+    def generate_caption(self, caption_text=None):
         """
         Retrieve and personalize a caption from the database for a new Instagram post,
         with support for configurable tone and style.
@@ -37,26 +37,13 @@ class ResponseGenerator:
             Exception: If no captions are found or there is an issue with the database.
         """
         try:
-            # Retrieve captions from the database
-            captions = self.database_client.get_data("captions")
-            if not captions:
-                self.logger.error("No captions found in the database.")
-                raise Exception("No captions found in the database.")
-
-            # Select a base caption based on user preferences
-            try:
-                caption = self.user_preferences.select_preferred_caption(captions)
-            except ValueError as e:
-                self.logger.error(f"No suitable captions found: {e}")
-                raise Exception("Error retrieving or personalizing caption: No suitable captions found.")
-            
             # Retrieve user preferences for response style and tone
             response_style = self.user_preferences.response_style
             content_tone = self.user_preferences.content_tone
 
             # Construct the prompt for OpenAI with the specified style, tone, and additional directives
             prompt = (
-                f"Generate a caption in a {response_style} style with a {content_tone} tone: '{caption}'"
+                f"Generate a caption in a {response_style} style with a {content_tone} tone: '{caption_text}'"
             )
             
             # Use OpenAI to generate the personalized caption
