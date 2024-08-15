@@ -53,6 +53,70 @@ class InstagramIntegration(SocialMediaIntegration):
         self.logger.info(f"Fetching posts for hashtag: {hashtag}")
         return self._execute_get_request(url, params, retries, backoff_factor)
 
+    def fetch_post_content(self, media_id):
+        """
+        Fetch the content of a specific post using its media_id.
+
+        Args:
+            media_id (str): The ID of the media post to fetch the content for.
+
+        Returns:
+            dict: The content of the post.
+        """
+        try:
+            if self.use_graph_api:
+                url = f"{self.base_url}{media_id}"
+                params = {'access_token': self.access_token}
+                response = self.session.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                post_content = {
+                    'text': data.get('caption', {}).get('text', ''),
+                    'media_url': data.get('media_url', '')
+                }
+            else:
+                url = f"{self.base_url}/media/{media_id}"
+                response = self.session.get(url)
+                response.raise_for_status()
+                data = response.json()
+                post_content = {
+                    'text': data.get('caption', ''),
+                    'media_url': data.get('images', {}).get('standard_resolution', {}).get('url', '')
+                }
+            self.logger.info(f"Fetched content for post {media_id} on Instagram.")
+            return post_content
+        except Exception as e:
+            self.logger.error(f"Failed to fetch post content for {media_id} on Instagram: {e}", exc_info=True)
+            raise
+
+    def fetch_comments_list(self, media_id):
+        """
+        Fetch the list of comments for a specific post using its media_id.
+
+        Args:
+            media_id (str): The ID of the media post to fetch comments for.
+
+        Returns:
+            list: A list of comments on the post.
+        """
+        try:
+            if self.use_graph_api:
+                url = f"{self.base_url}{media_id}/comments"
+                params = {'access_token': self.access_token}
+                response = self.session.get(url, params=params)
+                response.raise_for_status()
+            else:
+                url = f"{self.base_url}/media/{media_id}/comments"
+                response = self.session.get(url)
+                response.raise_for_status()
+            data = response.json()
+            comments_list = [{'id': comment.get('id'), 'text': comment.get('text')} for comment in data.get('data', [])]
+            self.logger.info(f"Fetched comments for post {media_id} on Instagram.")
+            return comments_list
+        except Exception as e:
+            self.logger.error(f"Failed to fetch comments for {media_id} on Instagram: {e}", exc_info=True)
+            raise
+        
     def post_image(self, image_url, caption):
         """
         Post an image to Instagram with a caption.

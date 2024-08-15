@@ -77,3 +77,29 @@ class SocialMediaIntegration(ABC):
         :return: The result of the unfollow operation.
         """
         pass
+
+    @abstractmethod
+    def fetch_post_content(self, media_id):
+        """
+        Fetch the content of a specific post using its media_id.
+
+        Args:
+            media_id (str): The ID of the media post to fetch the content for.
+
+        Returns:
+            dict: The content of the post.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")
+
+    @abstractmethod
+    def fetch_comments_list(self, media_id):
+        """
+        Fetch the list of comments for a specific post using its media_id.
+
+        Args:
+            media_id (str): The ID of the media post to fetch comments for.
+
+        Returns:
+            list: A list of comments on the post.
+        """
+        raise NotImplementedError("This method should be implemented by subclasses.")

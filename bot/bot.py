@@ -29,7 +29,7 @@ class SocialBot:
             "twitter": TwitterIntegration(config_manager)
         }
         self.database_client = database_client
-        self.user_preferences= user_preferences
+        self.user_preferences = user_preferences
         self.response_generator = ResponseGenerator(openai_client, database_client, user_preferences)
         self.logger.info("SocialBot initialized with integrations for Instagram and Twitter.")
 
@@ -110,10 +110,20 @@ class SocialBot:
         if platform not in self.platforms:
             raise ValueError(f"Platform {platform} is not supported.")
 
-        #TODO: Get post content for {media_id}
-        #TODO: Do the functionalities, as followed
-        #TODO: A well defined context for the prompt directives. e.g. post_text
         try:
+            # Fetch the post content
+            post_content = self.platforms[platform].fetch_post_content(media_id)
+            
+            # Ensure we have a well-defined context for generating comments
+            context = {
+                'post_text': post_content.get('text', ''),
+                'media_url': post_content.get('media_url', '')
+            }
+            
+            # Log the context being used
+            self.logger.info(f"Using context for comment generation: {context}")
+
+            # Generate a personalized comment if not provided
             if not comment_text:
                 comment_text = self.response_generator.generate_personalized_comment(context, platform)
                 self.logger.debug(f"Generated comment: {comment_text}")
@@ -133,10 +143,10 @@ class SocialBot:
 
     def reply_to_comments(self, platform, media_id, reply_text=None):
         """
-        Reply to a comment on the specified post on a given platform.
+        Reply to comments on the specified post on a given platform.
 
         Args:
-            platform (str): The platform to reply to the comment on (e.g., 'instagram', 'twitter').
+            platform (str): The platform to reply to the comments on (e.g., 'instagram', 'twitter').
             media_id (str): The ID of the post with the comments.
             reply_text (str, optional): The text of the reply. If None, it will be generated.
 
@@ -145,32 +155,48 @@ class SocialBot:
 
         Raises:
             ValueError: If the specified platform is not supported.
-            Exception: If there is an error in replying to the comment.
+            Exception: If there is an error in replying to the comments.
         """
         if platform not in self.platforms:
             raise ValueError(f"Platform {platform} is not supported.")
 
-        #TODO: Get list of comment for {media_id}
-        #TODO: Do the functionalities
-
-        #TODO: With well defined context for the prompt directives. e.g. post_text & comment_text
-        #TODO: Do the following for each comment
         try:
-            if not reply_text:
-                reply_text = self.response_generator.generate_personalized_reply(context, platform)
-                self.logger.debug(f"Generated reply: {reply_text}")
+            # Fetch list of comments
+            comments_list = self.platforms[platform].fetch_comments_list(media_id)
+            
+            # Fetch the post content to include it in the context
+            post_content = self.platforms[platform].fetch_post_content(media_id) 
 
-            if self.interactive:
-                action_description = f"Replying to comment {comment_id} on {platform} post {post_id} with text: {reply_text}."
-                if not self.confirm_action(action_description):
-                    self.logger.info(f"Reply action canceled by user on {platform}.")
-                    return {"status": "canceled", "reason": "User canceled the action."}
+            for comment in comments_list:
+                comment_id = comment.get('id')
+                comment_text = comment.get('text')
+                
+                # Ensure we have a well-defined context for generating replies
+                context = {
+                    'post_text': post_content.get('text', ''),
+                    'comment_text': comment_text,
+                    'media_url': post_content.get('media_url', '')
+                }
+                
+                # Log the context being used
+                self.logger.info(f"Using context for reply generation: {context}")
 
-            result = self.platforms[platform].reply_to_comment(post_id=post_id, comment_id=comment_id, reply_text=reply_text)
-            self.logger.info(f"Replied to comment {comment_id} on {platform} post {post_id} with text: {reply_text}")
-            return result
+                # Generate a personalized reply if not provided
+                if not reply_text:
+                    reply_text = self.response_generator.generate_personalized_reply(context, platform)
+                    self.logger.debug(f"Generated reply: {reply_text}")
+
+                if self.interactive:
+                    action_description = f"Replying to comment {comment_id} on {platform} post {media_id} with text: {reply_text}."
+                    if not self.confirm_action(action_description):
+                        self.logger.info(f"Reply action canceled by user on {platform}.")
+                        continue
+
+                result = self.platforms[platform].reply_to_comment(media_id=media_id, comment_id=comment_id, reply_text=reply_text)
+                self.logger.info(f"Replied to comment {comment_id} on {platform} post {media_id} with text: {reply_text}")
+            return {"status": "success"}
         except Exception as e:
-            self.logger.error(f"Failed to reply to comment {comment_id} on {platform} post {post_id}: {e}", exc_info=True)
+            self.logger.error(f"Failed to reply to comments on {platform} post {media_id}: {e}", exc_info=True)
             raise
 
     def follow_users(self, platform, users):

@@ -27,6 +27,66 @@ class TwitterIntegration(SocialMediaIntegration):
         self.logger = logging.getLogger(__name__)
         self.logger.info("TwitterIntegration initialized with provided API credentials.")
 
+    # Existing methods...
+
+    def fetch_post_content(self, media_id):
+        """
+        Fetch the content of a specific tweet using its media_id.
+
+        Args:
+            media_id (str): The ID of the media post to fetch the content for.
+
+        Returns:
+            dict: The content of the tweet.
+        """
+        try:
+            url = f"{self.BASE_URL}tweets/{media_id}"
+            params = {'tweet.fields': 'text,entities'}
+
+            response = self.session.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            post_content = {
+                'text': data.get('data', {}).get('text', ''),
+                'media_url': data.get('data', {}).get('entities', {}).get('media', [{}])[0].get('media_url', '')
+            }
+
+            self.logger.info(f"Fetched content for tweet {media_id} on Twitter.")
+            return post_content
+        except Exception as e:
+            self.logger.error(f"Failed to fetch post content for {media_id} on Twitter: {e}", exc_info=True)
+            raise
+
+    def fetch_comments_list(self, media_id):
+        """
+        Fetch the list of comments (replies) for a specific tweet using its media_id.
+
+        Args:
+            media_id (str): The ID of the media post to fetch comments for.
+
+        Returns:
+            list: A list of comments on the tweet.
+        """
+        try:
+            url = f"{self.BASE_URL}tweets/search/recent"
+            params = {
+                'query': f'conversation_id:{media_id}',
+                'tweet.fields': 'author_id,conversation_id,created_at'
+            }
+
+            response = self.session.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            comments_list = [{'id': comment.get('id'), 'text': comment.get('text')} for comment in data.get('data', [])]
+
+            self.logger.info(f"Fetched comments for tweet {media_id} on Twitter.")
+            return comments_list
+        except Exception as e:
+            self.logger.error(f"Failed to fetch comments for {media_id} on Twitter: {e}", exc_info=True)
+            raise
+
     def get_posts(self, hashtag, retries=3, backoff_factor=0.3):
         """
         Retrieve tweets associated with a specific hashtag.
