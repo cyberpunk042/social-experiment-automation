@@ -1,5 +1,5 @@
 import logging
-from instapy import InstaPy
+from bot.crawler.instapy import InstaPy
 from social_media.instagram_api import InstagramIntegration
 
 class InstaPyIntegration:

@@ -26,7 +26,7 @@ def create_post(bot, platform, logger):
         logger.error(f"Failed to create post on {platform}: {e}")
         raise
 
-def comment_to_post(bot, platform, media_id, comment_text, logger):
+def comment_to_post(bot, platform, media_id, logger):
     """
     Post a comment on a specific media on the specified platform.
 
@@ -34,36 +34,34 @@ def comment_to_post(bot, platform, media_id, comment_text, logger):
         bot (SocialBot): The bot instance used to perform the action.
         platform (str): The social media platform to comment on.
         media_id (str): The ID of the media to comment on.
-        comment_text (str): The text of the comment.
         logger (logging.Logger): The logger instance to log the process.
 
     Returns:
         dict: The response from the platform, including the comment ID.
     """
     try:
-        result = bot.post_comment(platform, media_id, comment_text)
+        result = bot.post_comment(platform, media_id)
         logger.info(f"Comment posted successfully on {platform} with ID: {result['id']}")
         return result
     except Exception as e:
         logger.error(f"Failed to post comment on {platform}: {e}")
         raise
 
-def reply_to_comments(bot, platform, comment_id, reply_text, logger):
+def reply_to_comments(bot, platform, media_id, logger):
     """
     Reply to a comment on the specified platform.
 
     Args:
         bot (SocialBot): The bot instance used to perform the action.
         platform (str): The social media platform to reply on.
-        comment_id (str): The ID of the comment to reply to.
-        reply_text (str): The text of the reply.
+        media_id (str): The ID of the media to reply to.
         logger (logging.Logger): The logger instance to log the process.
 
     Returns:
         dict: The response from the platform, including the reply ID.
     """
     try:
-        result = bot.reply_to_comment(platform, comment_id, reply_text)
+        result = bot.reply_to_comments(platform, media_id)
         logger.info(f"Reply posted successfully on {platform} with ID: {result['id']}")
         return result
     except Exception as e:
@@ -119,8 +117,6 @@ if __name__ == "__main__":
     parser.add_argument("--action", type=str, required=True, help="Action to perform (e.g., create_post, comment_to_post, reply_to_comments, add_caption)")
     parser.add_argument("--platform", type=str, help="The social media platform to perform the action on (e.g., instagram)")
     parser.add_argument("--media_id", type=str, help="The ID of the media to comment on or reply to")
-    parser.add_argument("--comment_text", type=str, help="The text of the comment to post")
-    parser.add_argument("--reply_text", type=str, help="The text of the reply to post")
     parser.add_argument("--file", type=str, help="Path to JSON file for adding captions")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
 
@@ -141,13 +137,13 @@ if __name__ == "__main__":
     
     elif args.action == "comment_to_post":
         if not args.platform or not args.media_id or not args.comment_text:
-            raise ValueError("Platform, media_id, and comment_text must be specified for commenting on a post.")
-        comment_to_post(bot, args.platform, args.media_id, args.comment_text, bot.logger)
+            raise ValueError("Platform and media_id must be specified for commenting on a post.")
+        comment_to_post(bot, args.platform, args.media_id, bot.logger)
     
     elif args.action == "reply_to_comments":
-        if not args.platform or not args.comment_id or not args.reply_text:
-            raise ValueError("Platform, comment_id, and reply_text must be specified for replying to a comment.")
-        reply_to_comments(bot, args.platform, args.comment_id, args.reply_text, bot.logger)
+        if not args.platform or not args.media_id or not args.reply_text:
+            raise ValueError("Platform and media_id must be specified for replying to a comments.")
+        reply_to_comments(bot, args.platform, args.media_id, bot.logger)
     
     elif args.action == "add_caption":
         if args.file:

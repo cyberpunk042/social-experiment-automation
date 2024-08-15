@@ -91,109 +91,123 @@ class SocialBot:
             self.logger.error(f"Failed to create post on {platform}: {e}")
             raise
 
-    def post_comment(self, platform, media_id, context=None):
+    def post_comment(self, platform, media_id, comment_text=None):
         """
-        Post a comment on a specific media item on the specified platform.
+        Post a comment on the specified post on a given platform.
 
         Args:
             platform (str): The platform to post the comment on (e.g., 'instagram', 'twitter').
-            media_id (str): The ID of the media (post) to comment on.
-            context (str): Context to generate the comment. If not provided, it will be auto-generated.
+            media_id (str): The ID of the post to comment on.
+            comment_text (str, optional): The text of the comment. If None, it will be generated.
 
         Returns:
             dict: The result of the comment operation.
 
         Raises:
-            Exception: If there is an error in posting the comment or the platform is unsupported.
+            ValueError: If the specified platform is not supported.
+            Exception: If there is an error in posting the comment.
         """
         if platform not in self.platforms:
             raise ValueError(f"Platform {platform} is not supported.")
 
+        #TODO: Get post content for {media_id}
+        #TODO: Do the functionalities, as followed
+        #TODO: A well defined context for the prompt directives. e.g. post_text
         try:
-            comment_text = self.response_generator.generate_comment(context)
+            if not comment_text:
+                comment_text = self.response_generator.generate_personalized_comment(context, platform)
+                self.logger.debug(f"Generated comment: {comment_text}")
 
             if self.interactive:
-                action_description = f"Posting comment on {platform} media ID {media_id}: '{comment_text}'."
+                action_description = f"Posting comment on {platform} post {media_id} with text: {comment_text}."
                 if not self.confirm_action(action_description):
-                    self.logger.info(f"Comment posting canceled by user on {platform}.")
+                    self.logger.info(f"Post comment action canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
 
-            result = self.platforms[platform].post_comment(media_id, comment_text)
-            self.logger.info(f"Posted comment on {platform} media ID {media_id}.")
+            result = self.platforms[platform].post_comment(media_id=media_id, comment_text=comment_text)
+            self.logger.info(f"Posted comment on {platform} post {media_id} with text: {comment_text}")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to post comment on {platform} media ID {media_id}: {e}")
+            self.logger.error(f"Failed to post comment on {platform} post {media_id}: {e}", exc_info=True)
             raise
 
-    def reply_to_comment(self, platform, comment_id, context=None):
+    def reply_to_comments(self, platform, media_id, reply_text=None):
         """
-        Reply to a comment on a specific media item on the specified platform.
+        Reply to a comment on the specified post on a given platform.
 
         Args:
             platform (str): The platform to reply to the comment on (e.g., 'instagram', 'twitter').
-            comment_id (str): The ID of the comment to reply to.
-            context (str): Context to generate the reply. If not provided, it will be auto-generated.
+            media_id (str): The ID of the post with the comments.
+            reply_text (str, optional): The text of the reply. If None, it will be generated.
 
         Returns:
             dict: The result of the reply operation.
 
         Raises:
-            Exception: If there is an error in replying to the comment or the platform is unsupported.
+            ValueError: If the specified platform is not supported.
+            Exception: If there is an error in replying to the comment.
         """
         if platform not in self.platforms:
             raise ValueError(f"Platform {platform} is not supported.")
 
+        #TODO: Get list of comment for {media_id}
+        #TODO: Do the functionalities
+
+        #TODO: With well defined context for the prompt directives. e.g. post_text & comment_text
+        #TODO: Do the following for each comment
         try:
-            reply_text = self.response_generator.generate_reply(context)
+            if not reply_text:
+                reply_text = self.response_generator.generate_personalized_reply(context, platform)
+                self.logger.debug(f"Generated reply: {reply_text}")
 
             if self.interactive:
-                action_description = f"Replying to comment on {platform} comment ID {comment_id} with: '{reply_text}'."
+                action_description = f"Replying to comment {comment_id} on {platform} post {post_id} with text: {reply_text}."
                 if not self.confirm_action(action_description):
                     self.logger.info(f"Reply action canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
 
-            result = self.platforms[platform].reply_to_comment(comment_id, reply_text)
-            self.logger.info(f"Replied to comment on {platform} comment ID {comment_id}.")
+            result = self.platforms[platform].reply_to_comment(post_id=post_id, comment_id=comment_id, reply_text=reply_text)
+            self.logger.info(f"Replied to comment {comment_id} on {platform} post {post_id} with text: {reply_text}")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to reply to comment on {platform} comment ID {comment_id}: {e}")
+            self.logger.error(f"Failed to reply to comment {comment_id} on {platform} post {post_id}: {e}", exc_info=True)
             raise
 
-    def follow_users(self, platform, tags, amount=10):
+    def follow_users(self, platform, users):
         """
-        Follow users based on specified tags on the specified platform.
+        Follow users on the specified platform.
 
         Args:
             platform (str): The platform to follow users on (e.g., 'instagram', 'twitter').
-            tags (list): List of tags to use for finding users to follow.
-            amount (int): Number of users to follow.
+            users (list of str): A list of user IDs to follow.
 
         Returns:
             dict: The result of the follow operation.
 
         Raises:
-            Exception: If there is an error in following users or the platform is unsupported.
+            ValueError: If the specified platform is not supported.
+            Exception: If there is an error in following users.
         """
         if platform not in self.platforms:
             raise ValueError(f"Platform {platform} is not supported.")
-
+        
         try:
             if self.interactive:
-                action_description = f"Following {amount} users on {platform} based on tags: {tags}."
+                action_description = f"Following users on {platform}: {', '.join(users)}."
                 if not self.confirm_action(action_description):
                     self.logger.info(f"Follow action canceled by user on {platform}.")
                     return {"status": "canceled", "reason": "User canceled the action."}
 
-            result = self.platforms[platform].follow_users(amount=amount, tags=tags)
-            self.logger.info(f"Followed users on {platform} by tags: {tags}.")
+            result = self.platforms[platform].follow_users(users=users)
+            self.logger.info(f"Followed users on {platform}: {', '.join(users)}")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to follow users on {platform} by tags {tags}: {e}")
+            self.logger.error(f"Failed to follow users on {platform}: {e}", exc_info=True)
             raise
 
-    def unfollow_users(self, platform, amount=10):
+    def unfollow_users(self, platform, amount):
         """
-        Unfollow a specified number of users on the specified platform.
+        Unfollow users on the specified platform.
 
         Args:
             platform (str): The platform to unfollow users on (e.g., 'instagram', 'twitter').
@@ -203,11 +217,12 @@ class SocialBot:
             dict: The result of the unfollow operation.
 
         Raises:
-            Exception: If there is an error in unfollowing users or the platform is unsupported.
+            ValueError: If the specified platform is not supported.
+            Exception: If there is an error in unfollowing users.
         """
         if platform not in self.platforms:
             raise ValueError(f"Platform {platform} is not supported.")
-
+        
         try:
             if self.interactive:
                 action_description = f"Unfollowing {amount} users on {platform}."
@@ -219,7 +234,7 @@ class SocialBot:
             self.logger.info(f"Unfollowed {amount} users on {platform}.")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to unfollow users on {platform}: {e}")
+            self.logger.error(f"Failed to unfollow users on {platform}: {e}", exc_info=True)
             raise
 
     def confirm_action(self, action_description):
@@ -241,5 +256,5 @@ class SocialBot:
                 self.logger.info(f"Action not confirmed: {action_description}")
                 return False
         except Exception as e:
-            self.logger.error(f"Failed to confirm action {action_description}: {e}")
+            self.logger.error(f"Failed to confirm action {action_description}: {e}", exc_info=True)
             raise
