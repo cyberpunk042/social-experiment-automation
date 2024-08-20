@@ -60,8 +60,8 @@ You can run the bot by invoking the `main.py` script and specifying the action y
 
 ```bash
 poetry run python bot/main.py --action create_post --platform instagram
-poetry run python bot/main.py --action comment_to_post --platform instagram
-poetry run python bot/main.py --action reply_to_comments --platform instagram
+poetry run python bot/main.py --action comment_to_post --media-id <media-id> --platform instagram
+poetry run python bot/main.py --action reply_to_comments --media-id <media-id> --platform instagram
 ```
 
 #### Scheduling Posts
