@@ -114,7 +114,7 @@ You can add captions using two methods:
     ```json
     [
         {
-            "text": "The future belongs to those who believe in the beauty of their dreams.",
+            "caption_text": "The future belongs to those who believe in the beauty of their dreams.",
             "tags": ["inspirational", "future", "dreams"],
             "length": "medium",
             "category": "inspirational",
@@ -124,7 +124,7 @@ You can add captions using two methods:
             "comments": 5
         },
         {
-            "text": "Believe you can and you're halfway there.",
+            "caption_text": "Believe you can and you're halfway there.",
             "tags": ["motivation", "believe", "success"],
             "length": "short",
             "category": "motivational",
