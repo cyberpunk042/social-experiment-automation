@@ -123,45 +123,68 @@ class UserPreferences:
             generated_captions (list): A list of generated caption dictionaries to be excluded, containing the caption_id.
         
         Returns:
-            str: The text of the selected caption.
+            dict: The selected caption dictionary.
         
         Raises:
             ValueError: If no suitable captions are found.
         """
         
         def filter_captions(captions, tags=None, length=None, category=None, tone=None):
+            """
+            Filter captions based on tags, length, category, and tone.
+
+            Args:
+                captions (list): List of captions to filter.
+                tags (list, optional): List of tags to filter by. Default is None.
+                length (str, optional): Desired length of the caption. Default is None.
+                category (str, optional): Desired category of the caption. Default is None.
+                tone (str, optional): Desired tone of the caption. Default is None.
+
+            Returns:
+                list: Filtered list of captions.
+            """
+            if tags is None:
+                tags = []
+            
             return [
                 caption for caption in captions
-                if (not tags or any(tag.strip() in caption.get('tags', '').split(',')) for tag in tags) and
+                if (not tags or any(tag.strip() in (caption.get('tags') or '').split(',') for tag in tags)) and
                 (not length or caption.get('length') == length) and
                 (not category or caption.get('category') == category) and
                 (not tone or caption.get('tone') == tone)
             ]
-        
+
         # Exclude already generated captions
         generated_caption_ids = {gen_caption['caption_id'] for gen_caption in generated_captions}
         captions = [caption for caption in captions if caption.get('id') not in generated_caption_ids]
         
+        if not captions:
+            self.logger.error("All available captions have been previously generated.")
+            raise ValueError("No new captions available to select from.")
+
         # Step 1: Try exact match
         filtered_captions = filter_captions(captions, self.tags, self.length, self.category, self.tone)
         
         # Step 2: Relax criteria (ignore category)
         if not filtered_captions:
+            self.logger.info("No exact match found, relaxing criteria (ignoring category).")
             filtered_captions = filter_captions(captions, self.tags, self.length, None, self.tone)
         
         # Step 3: Further relax criteria (ignore category and tone)
         if not filtered_captions:
+            self.logger.info("Still no match, further relaxing criteria (ignoring category and tone).")
             filtered_captions = filter_captions(captions, self.tags, self.length, None, None)
         
         # Step 4: Broadest match (ignore tags, category, and tone)
         if not filtered_captions:
+            self.logger.info("No match found, using broadest criteria (ignoring tags, category, and tone).")
             filtered_captions = filter_captions(captions, None, self.length, None, None)
         
-        # If no captions found, raise an error
+        # Step 5: If still no match, return the first available caption
         if not filtered_captions:
-            self.logger.error(f"No suitable captions found based on the given preferences. {len(captions)} captions available.")
-            raise ValueError("No suitable captions found based on the given preferences.")
-        
+            self.logger.info("No filtered captions found. Falling back to the first available caption.")
+            filtered_captions = [captions[0]]
+
         # Rank captions by engagement or other metrics
         ranked_captions = sorted(
             filtered_captions,
@@ -170,15 +193,10 @@ class UserPreferences:
         )
         
         # Select the top-ranked caption
-        selected_caption = ranked_captions[0] if ranked_captions else None
-        
-        if not selected_caption:
-            self.logger.error("No suitable captions found after filtering and ranking.")
-            raise ValueError("No suitable captions found after filtering and ranking.")
+        selected_caption = ranked_captions[0]
         
         self.logger.info(f"Selected caption text: {selected_caption.get('caption_text')}")
         return selected_caption
-
 
 
 

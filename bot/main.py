@@ -3,11 +3,11 @@ import json
 import os
 import logging
 from uuid import uuid4
-from datetime import datetime
 from openai_client import OpenAIClient
 from user_preferences import UserPreferences
 from config_manager import ConfigManager
 from database_client import DatabaseClient
+from datetime import datetime, timedelta
 from bot import SocialBot
 
 LOG_DIR = 'logs'
@@ -20,25 +20,40 @@ if not os.path.exists(LOG_DIR):
 logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-
-def create_post(bot, platform, logger):
+def create_post(bot, platform, logger, delay_post=None):
     """
-    Create a post on the specified platform.
+    Create a post on the specified platform, with an optional delay.
 
     Args:
         bot (SocialBot): The bot instance used to perform the action.
         platform (str): The social media platform to post on.
         logger (logging.Logger): The logger instance to log the process.
+        delay_post (str, optional): A string representing the delay in hours before posting. Default is None.
 
     Returns:
         dict: The response from the platform, including the post ID.
     """
     try:
-        result = bot.post_image(platform)
-        logger.info(f"Post created successfully on {platform} with ID: {result}")
+        # If delay_post is specified, convert it to a timedelta and calculate the scheduled time
+        if delay_post:
+            try:
+                delay_duration = parse_delay_post(delay_post)
+                post_date = datetime.now() + delay_duration
+                post_timestamp = int(post_date.timestamp())
+                logger.info(f"Scheduling post on {platform} to be published at {post_date.isoformat()}")
+                result = bot.post_image(platform, schedule_time=post_timestamp)
+            except ValueError as ve:
+                logger.error(f"Invalid delay_post value: {delay_post}. {str(ve)}")
+                raise
+        else:
+            # Immediate post if no delay is specified
+            result = bot.post_image(platform)
+        
+        logger.info(f"Post created successfully on {platform} with ID: {result.get('scheduled_post_id') or result.get('url')}")
         return result
+
     except Exception as e:
-        logger.error(f"Failed to create post on {platform}: {e}")
+        logger.error(f"Failed to create post on {platform}: {e}", exc_info=True)
         raise
 
 def comment_to_post(bot, platform, media_id, logger):
@@ -126,13 +141,43 @@ def add_caption_from_file(database_client, file_path):
                 print(f"Caption added successfully with ID: {result[0]['id']}")
             else:
                 print("Failed to add caption or retrieve ID.")
+                
+def parse_delay_post(delay_post):
+    """
+    Parse the delay_post string to return a timedelta object.
 
+    Args:
+        delay_post (str): A string representing the delay in the format of "Xh", "Ym", or "Zd"
+                        where X, Y, Z are integers and h, m, d represent hours, minutes, and days respectively.
+
+    Returns:
+        timedelta: The corresponding timedelta object.
+    
+    Raises:
+        ValueError: If the format of delay_post is invalid.
+    """
+    try:
+        if delay_post.endswith("h"):
+            delay_hours = int(delay_post[:-1])
+            return timedelta(hours=delay_hours)
+        elif delay_post.endswith("m"):
+            delay_minutes = int(delay_post[:-1])
+            return timedelta(minutes=delay_minutes)
+        elif delay_post.endswith("d"):
+            delay_days = int(delay_post[:-1])
+            return timedelta(days=delay_days)
+        else:
+            raise ValueError("Invalid format. Use 'Xm' for minutes, 'Xh' for hours, or 'Xd' for days, where X is an integer.")
+    except ValueError:
+        raise ValueError("Invalid delay_post value. Ensure it's in the format of 'Xm', 'Xh', or 'Xd'.")
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Social Experiment Automation Bot")
     parser.add_argument("--action", type=str, required=True, help="Action to perform (e.g., create_post, comment_to_post, reply_to_comments, add_caption)")
     parser.add_argument("--platform", type=str, help="The social media platform to perform the action on (e.g., instagram)")
     parser.add_argument("--media_id", type=str, help="The ID of the media to comment on or reply to")
     parser.add_argument("--file", type=str, help="Path to JSON file for adding captions")
+    parser.add_argument("--delay_post", type=str, help="The delay in minutes, hours, or days to schedule the post (e.g., '15m', '2h', '1d')", default=None)
     parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
 
     args = parser.parse_args()
@@ -148,7 +193,7 @@ if __name__ == "__main__":
     if args.action == "create_post":
         if not args.platform:
             raise ValueError("Platform must be specified for creating a post.")
-        create_post(bot, args.platform, bot.logger)
+        create_post(bot, args.platform, bot.logger, args.delay_post)
     
     elif args.action == "comment_to_post":
         if not args.platform or not args.media_id or not args.comment_text:

@@ -1,13 +1,14 @@
 # Social Experiment Automation
 
-This project automates interactions on social media platforms, particularly Instagram, using a bot that can create posts, comment on posts, and reply to comments. The bot leverages OpenAI for generating content and interacts with Instagram`s API to automate these tasks.
+This project automates interactions on social media platforms, particularly Instagram, using a bot that can create posts, comment on posts, and reply to comments. The bot leverages OpenAI for generating content and interacts with Instagram's API to automate these tasks.
 
 ## Features
 
 - **Automated Post Creation**: Generates and posts images with captions to Instagram.
+- **Scheduled Posting**: Allows scheduling posts at a specific time.
 - **Commenting**: Posts comments on existing Instagram posts.
 - **Replying to Comments**: Automatically replies to comments on Instagram posts.
-- **Integration Tests**: End-to-end tests using real API interactions to validate the bot`s functionality.
+- **Integration Tests**: End-to-end tests using real API interactions to validate the bot's functionality.
 
 ## Setup
 
@@ -63,6 +64,16 @@ poetry run python bot/main.py --action comment_to_post --platform instagram
 poetry run python bot/main.py --action reply_to_comments --platform instagram
 ```
 
+#### Scheduling Posts
+
+You can also schedule a post to be published after a specific delay using the `--delay_post` argument. The `delay_post` should be specified in the format of "Xm", "Xh", or "Xd" where X is an integer representing minutes, hours, or days.
+
+Example:
+
+```bash
+poetry run python bot/main.py --action create_post --platform instagram --delay_post 2h
+```
+
 The bot will use the credentials and configurations specified in the `.env` file to interact with Instagram.
 
 ## Adding Captions to the Database
@@ -108,11 +119,9 @@ You can add captions using two methods:
             "length": "medium",
             "category": "inspirational",
             "tone": "inspirational",
-            "engagement": {
-                "likes": 120,
-                "shares": 15,
-                "comments": 5
-            }
+            "likes": 120,
+            "shares": 15,
+            "comments": 5
         },
         {
             "text": "Believe you can and you're halfway there.",
@@ -120,11 +129,9 @@ You can add captions using two methods:
             "length": "short",
             "category": "motivational",
             "tone": "encouraging",
-            "engagement": {
-                "likes": 200,
-                "shares": 25,
-                "comments": 10
-            }
+            "likes": 200,
+            "shares": 25,
+            "comments": 10
         }
     ]
     ```
@@ -134,8 +141,6 @@ You can add captions using two methods:
 - Ensure that the JSON file is correctly formatted and that each caption object includes all required fields.
 - The `DatabaseClient` will validate the structure of each caption before inserting it into the database. If any required fields are missing, the insertion will fail.
 - This feature is integrated with Supabase via the `DatabaseClient`, ensuring that all captions are stored consistently.
-
-
 
 ### Testing
 
@@ -197,4 +202,3 @@ Contributions are welcome! Please fork the repository and submit a pull request 
 ### License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
-

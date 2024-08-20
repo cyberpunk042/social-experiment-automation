@@ -35,13 +35,14 @@ class SocialBot:
         self.response_generator = ResponseGenerator(openai_client, database_client, user_preferences)
         self.logger.info("SocialBot initialized with integrations for Instagram and Twitter.")
 
-    def post_image(self, platform, caption_text=None):
+    def post_image(self, platform, caption_text=None, schedule_time=None):
         """
         Generate an image based on the provided or generated caption and create a new post on the specified platform.
 
         Args:
             platform (str): The platform to post the image on (e.g., 'instagram', 'twitter').
             caption_text (str): Optional caption text for the post. If not provided, it will be generated.
+            schedule_time (int): Optional Unix timestamp representing when to schedule the post. Default is None.
 
         Returns:
             dict: The result of the post operation.
@@ -54,13 +55,13 @@ class SocialBot:
 
         try:
             if not caption_text:
-                
                 # Retrieve captions from the database
                 captions = self.database_client.get_data("captions")
                 generated_captions = self.database_client.get_data("generated_captions")
                 if not captions:
                     self.logger.error("No captions found in the database.")
                     raise Exception("No captions found in the database.")
+                self.logger.info(f"{len(captions)} captions found in the database.")
 
                 # Select a base caption based on user preferences
                 try:
@@ -69,14 +70,14 @@ class SocialBot:
                 except ValueError as e:
                     self.logger.error(f"No suitable captions found: {e}")
                     raise Exception("Error retrieving or personalizing caption: No suitable captions found.")
-                
+            
             generated_caption = self.response_generator.generate_caption(caption_text)
             
             # Generate the image based on the caption text
             image_url = self.response_generator.generate_image(generated_caption)
 
             if caption.get("id"):
-                # Save the generated caption to Supabase and link it to the existing caption record
+                # Save the generated caption to the database and link it to the existing caption record
                 self.database_client.add_generated_caption(generated_caption, caption_text, image_url, caption.get("id"))
 
             if self.interactive:
@@ -86,12 +87,19 @@ class SocialBot:
                     return {"status": "canceled", "reason": "User canceled the action."}
 
             # Post the image with the generated caption
-            result = self.platforms[platform].post_image(image_url, generated_caption)
-            self.logger.info(f"Created a new post on {platform} with caption: {generated_caption}")
+            if schedule_time:
+                result = self.platforms[platform].post_image(image_url, generated_caption, schedule_time=schedule_time)
+                self.logger.info(f"Scheduled a new post on {platform} with caption: {generated_caption} at {time.ctime(schedule_time)}")
+            else:
+                result = self.platforms[platform].post_image(image_url, generated_caption)
+                self.logger.info(f"Created a new post on {platform} with caption: {generated_caption}")
+
             return result
+
         except Exception as e:
             self.logger.error(f"Failed to create post on {platform}: {e}")
             raise
+
 
     def post_comment(self, platform, media_id, comment_text=None):
         """
